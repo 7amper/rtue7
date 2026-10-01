@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Конфигурация</title>
+    <title>Configuration</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-        <p><a href="/motor">Управление двигателями</a> | <a href="/registers">Регистры</a> | <a href="/video">Видео</a>| <a href="/config">Конфигурация</a> </p>
-        <h1>Редактирование конфигурации</h1>
+        <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/video">Video</a>| <a href="/config">Configuration</a> </p>
+        <h1>Edit Configuration</h1>
         <form method="post">
             <fieldset>
-                <legend>Общие настройки</legend>
-                <label>Пароль: <input type="password" name="password" value="{{.Password}}"></label>
-                <label>TCP Modbus порт: <input type="number" name="tcp_port" value="{{.TCPServerPort}}"></label>
-                <label>Web порт: <input type="number" name="web_port" value="{{.WebServerPort}}"></label>
+                <legend>General Settings</legend>
+                <label>Password: <input type="password" name="password" value="{{.Password}}"></label>
+                <label>Modbus TCP port: <input type="number" name="tcp_port" value="{{.TCPServerPort}}"></label>
+                <label>Web port: <input type="number" name="web_port" value="{{.WebServerPort}}"></label>
             </fieldset>
 
             <fieldset>
                 <legend>Modbus RTU</legend>
-                <label>Порт (/dev/ttyS1 | com9): <input name="rtu_port" value="{{.ModbusRTU.Port}}"></label>
+                <label>Port (/dev/ttyS1 | com9): <input name="rtu_port" value="{{.ModbusRTU.Port}}"></label>
                 <label>Baud rate(230400): <input type="number" name="baud" value="{{.ModbusRTU.BaudRate}}"></label>
                 <label>Data bits(8): <input type="number" name="data_bits" value="{{.ModbusRTU.DataBits}}"></label>
                 <label>Stop bits(1): <input type="number" name="stop_bits" value="{{.ModbusRTU.StopBits}}"></label>
@@ -29,14 +29,14 @@
             </fieldset>
 
             <fieldset>
-                <legend>Камера</legend>
+                <legend>Camera</legend>
                 <label>RTSP URL: <input name="rtsp_url" value="{{.Camera.RTSPURL}}"></label>
-                <label>Логин: <input name="camera_user" value="{{.Camera.Username}}"></label>
-                <label>Пароль: <input name="camera_pass" value="{{.Camera.Password}}"></label>
+                <label>Login: <input name="camera_user" value="{{.Camera.Username}}"></label>
+                <label>Password: <input name="camera_pass" value="{{.Camera.Password}}"></label>
             </fieldset>
 
             <fieldset>
-                <legend>Двигатели (Modbus Slave ID)</legend>
+                <legend>Motors (Modbus Slave ID)</legend>
                 <label>Axis X: <input type="number" name="axis_x" value="{{.Motors.AxisX}}"></label>
                 <label>Axis Y: <input type="number" name="axis_y" value="{{.Motors.AxisY}}"></label>
                 <label>Axis Z: <input type="number" name="axis_z" value="{{.Motors.AxisZ}}"></label>
@@ -44,7 +44,7 @@
             </fieldset>
 
             <fieldset>
-                <legend>Передаточные коффициенты (только для web) </legend>
+                <legend>Gear ratios (web only) </legend>
                 <label>Drive X: <input type="number" name="gain_x" value="{{.Motors.GainX}}" step="0.1" placeholder="0.0"></label>
                 <label>Drive Y: <input type="number" name="gain_y" value="{{.Motors.GainY}}" step="0.1" placeholder="0.0"></label>
                 <label>Drive Z: <input type="number" name="gain_z" value="{{.Motors.GainZ}}" step="0.1" placeholder="0.0"></label>
@@ -52,16 +52,16 @@
             </fieldset>
 
             <fieldset>
-                <legend>Modbus регистры (holding)</legend>
-                <label>Задать Скорость: <input type="number" name="reg_speed" value="{{.Registers.Speed}}"></label>
-                <label>Включение: <input type="number" name="reg_en" value="{{.Registers.Enable}}"></label>
-                <label>Задать позицию: <input type="number" name="reg_pos" value="{{.Registers.Position}}"></label>
-                <label>Режим: <input type="number" name="reg_mod" value="{{.Registers.Mode}}"></label>
-                <label>Получить Скорость: <input type="number" name="reg_getspeed" value="{{.Registers.GetSpeed}}"></label>
-                <label>Получить позицию: <input type="number" name="reg_getpos" value="{{.Registers.GetPosition}}"></label>
+                <legend>Modbus registers (holding)</legend>
+                <label>Set Speed: <input type="number" name="reg_speed" value="{{.Registers.Speed}}"></label>
+                <label>Enable: <input type="number" name="reg_en" value="{{.Registers.Enable}}"></label>
+                <label>Set Position: <input type="number" name="reg_pos" value="{{.Registers.Position}}"></label>
+                <label>Mode: <input type="number" name="reg_mod" value="{{.Registers.Mode}}"></label>
+                <label>Get Speed: <input type="number" name="reg_getspeed" value="{{.Registers.GetSpeed}}"></label>
+                <label>Get Position: <input type="number" name="reg_getpos" value="{{.Registers.GetPosition}}"></label>
             </fieldset>
-            <button type="submit">Сохранить</button>
-            {{if .ok}}<div class="ok">Конфигурация сохранена (требуется перезапуск для применения)</div>{{end}}
+            <button type="submit">Save</button>
+            {{if .ok}}<div class="ok">Configuration saved (restart required to apply)</div>{{end}}
         </form>
 </body>
 </html>

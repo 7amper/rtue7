@@ -1,0 +1,44 @@
+From 13f6f1c2af8cbdf8057ea3b89991047a077e83a7 Mon Sep 17 00:00:00 2001
+From: "qwen.ai[bot]" <qwenlm-intl@service.alibaba.com>
+Date: Thu, 1 Oct 2026 11:23:15 +0000
+Subject: [PATCH 2/2] Fix .gitignore: restore valid content without stray
+ heredoc commands
+
+---
+ .gitignore | 25 ++++++++++++++++++++++++-
+ 1 file changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/.gitignore b/.gitignore
+index cfa61fd..d0c94fc 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1 +1,24 @@
+-(empty)
+\ No newline at end of file
++# Binaries
++*.exe
++*.exe~
++*.dll
++*.so
++*.dylib
++bin/
++*.test
++*.out
++
++# Go workspace
++go.work
++go.work.sum
++
++# IDE
++.vscode/
++.idea/
++
++# OS
++.DS_Store
++Thumbs.db
++
++# Env
++.env
+-- 
+2.39.5
+

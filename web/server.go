@@ -48,7 +48,8 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/motor", ws.motorHandler)
 	//http.HandleFunc("/motoraxis", ws.changeAxis)
 	http.HandleFunc("/registers", ws.authMiddleware(ws.registersHandler))
-	http.HandleFunc("/video", ws.videoPage)
+	http.HandleFunc("/video", ws.assunPage) 
+	http.HandleFunc("/assun", ws.assunPage)
 	http.HandleFunc("/video_feed", ws.authMiddleware(ws.videoFeed))
 
 	// Статические файлы
@@ -328,9 +329,15 @@ func (ws *WebServer) registersHandler(w http.ResponseWriter, r *http.Request) {
 	ws.tmpl.ExecuteTemplate(w, "registers.html", nil)
 }
 
+// Страница ASSUN (бывшая Video) с вкладками второго уровня
+func (ws *WebServer) assunPage(w http.ResponseWriter, r *http.Request) {
+	ws.tmpl.ExecuteTemplate(w, "assun.html", nil)
+}
+
 // Страница видео
 func (ws *WebServer) videoPage(w http.ResponseWriter, r *http.Request) {
-	ws.tmpl.ExecuteTemplate(w, "video.html", nil)
+	http.Redirect(w, r, "/assun", http.StatusFound)
+	//ws.tmpl.ExecuteTemplate(w, "video.html", nil)
 }
 
 // MJPEG поток через ffmpeg

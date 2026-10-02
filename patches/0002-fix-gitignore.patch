@@ -1,4 +1,5 @@
 From 13f6f1c Mon Sep 17 00:00:00 2001
+From: qwen-code <qwen@local>
 Subject: [PATCH] Fix .gitignore: restore valid content without stray heredoc commands
 
 ---

@@ -1,0 +1,185 @@
+From ce2d61c62931751b416fd7575368b3086fb84bf0 Mon Sep 17 00:00:00 2001
+From: "qwen.ai[bot]" <qwenlm-intl@service.alibaba.com>
+Date: Fri, 2 Oct 2026 08:06:40 +0000
+Subject: [PATCH] Rename Video tab to ASSUN with second-level tabs (Basic..Read
+ Only)
+
+---
+ web/server.go                | 11 ++++++--
+ web/static/style.css         | 12 +++++++++
+ web/templates/assun.html     | 49 ++++++++++++++++++++++++++++++++++++
+ web/templates/config.html    |  2 +-
+ web/templates/motor.html     |  2 +-
+ web/templates/registers.html |  2 +-
+ web/templates/video.html     | 12 ---------
+ 7 files changed, 73 insertions(+), 17 deletions(-)
+ create mode 100644 web/templates/assun.html
+ delete mode 100644 web/templates/video.html
+
+diff --git a/web/server.go b/web/server.go
+index 7c08be3..1c39bf4 100644
+--- a/web/server.go
++++ b/web/server.go
+@@ -48,7 +48,8 @@ func (ws *WebServer) Start() error {
+ 	http.HandleFunc("/motor", ws.motorHandler)
+ 	//http.HandleFunc("/motoraxis", ws.changeAxis)
+ 	http.HandleFunc("/registers", ws.authMiddleware(ws.registersHandler))
+-	http.HandleFunc("/video", ws.videoPage)
++	http.HandleFunc("/video", ws.assunPage) 
++	http.HandleFunc("/assun", ws.assunPage)
+ 	http.HandleFunc("/video_feed", ws.authMiddleware(ws.videoFeed))
+ 
+ 	// Статические файлы
+@@ -328,9 +329,15 @@ func (ws *WebServer) registersHandler(w http.ResponseWriter, r *http.Request) {
+ 	ws.tmpl.ExecuteTemplate(w, "registers.html", nil)
+ }
+ 
++// Страница ASSUN (бывшая Video) с вкладками второго уровня
++func (ws *WebServer) assunPage(w http.ResponseWriter, r *http.Request) {
++	ws.tmpl.ExecuteTemplate(w, "assun.html", nil)
++}
++
+ // Страница видео
+ func (ws *WebServer) videoPage(w http.ResponseWriter, r *http.Request) {
+-	ws.tmpl.ExecuteTemplate(w, "video.html", nil)
++	http.Redirect(w, r, "/assun", http.StatusFound)
++	//ws.tmpl.ExecuteTemplate(w, "video.html", nil)
+ }
+ 
+ // MJPEG поток через ffmpeg
+diff --git a/web/static/style.css b/web/static/style.css
+index 723173c..111ed9f 100644
+--- a/web/static/style.css
++++ b/web/static/style.css
+@@ -82,3 +82,15 @@ button:hover {
+     border: 1px solid #ff0000;
+     border-radius: 4px;
+ }
++
++/* Second-level tabs (ASSUN page) */
++.subtabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 12px 0 0 0; border-bottom: 2px solid #2c7fb8; }
++.subtab-btn { padding: 6px 14px; border: 1px solid #ccc; border-bottom: none; background: #e8e8e8; cursor: pointer; border-radius: 6px 6px 0 0; font-size: 14px; }
++.subtab-btn:hover { background: #d0e6f5; }
++.subtab-btn.active { background: #2c7fb8; color: #fff; border-color: #2c7fb8; }
++.tab-content { display: none; padding: 12px 0; }
++.tab-content.active { display: block; }
++.tab-content table { border-collapse: collapse; width: 100%; }
++.tab-content th, .tab-content td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; font-size: 13px; }
++.tab-content th { background: #f0f0f0; }
++.placeholder { color: #a00; }
+diff --git a/web/templates/assun.html b/web/templates/assun.html
+new file mode 100644
+index 0000000..4e1c12b
+--- /dev/null
++++ b/web/templates/assun.html
+@@ -0,0 +1,49 @@
++<!DOCTYPE html>
++<html>
++<head>
++    <title>ASSUN</title>
++    <link rel="stylesheet" href="/static/style.css">
++</head>
++<body>
++    <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a> | <a href="/config">Configuration</a></p>
++    <h1>ASSUN Register Map</h1>
++
++    <div class="subtabs">
++        <button class="subtab-btn active" data-tab="basic" onclick="showTab('basic')">Basic</button>
++        <button class="subtab-btn" data-tab="current" onclick="showTab('current')">Current</button>
++        <button class="subtab-btn" data-tab="speed" onclick="showTab('speed')">Speed</button>
++        <button class="subtab-btn" data-tab="position" onclick="showTab('position')">Position</button>
++        <button class="subtab-btn" data-tab="communication" onclick="showTab('communication')">Communication</button>
++        <button class="subtab-btn" data-tab="motor" onclick="showTab('motor')">Motor</button>
++        <button class="subtab-btn" data-tab="gain" onclick="showTab('gain')">Gain</button>
++        <button class="subtab-btn" data-tab="vibration" onclick="showTab('vibration')">Vibration</button>
++        <button class="subtab-btn" data-tab="dido" onclick="showTab('dido')">DI/DO</button>
++        <button class="subtab-btn" data-tab="readonly" onclick="showTab('readonly')">Read Only</button>
++    </div>
++
++    <!-- To be filled with the table from assun_modbus.xlsx, grouped by Classify:
++         1-Basic, 2-Current, 3-Speed, 4-Position, 5-Communication, 6-Motor,
++         7-Gain, 8-Vibration, 9-DI/DO, 12+13-Read Only -->
++    <div id="tab-basic" class="tab-content active"><p class="placeholder">Table not loaded yet (Classify = 1).</p></div>
++    <div id="tab-current" class="tab-content"><p class="placeholder">Table not loaded yet (Classify = 2).</p></div>
++    <div id="tab-speed" class="tab-content"><p class="placeholder">Table not loaded yet (Classify = 3).</p></div>
++    <div id="tab-position" class="tab-content"><p class="placeholder">Table not loaded yet (Classify = 4).</p></div>
++    <div id="tab-communication" class="tab-content"><p class="placeholder">Table not loaded yet (Classify = 5).</p></div>
++    <div id="tab-motor" class="tab-content"><p class="placeholder">Table not loaded yet (Classify = 6).</p></div>
++    <div id="tab-gain" class="tab-content"><p class="placeholder">Table not loaded yet (Classify = 7).</p></div>
++    <div id="tab-vibration" class="tab-content"><p class="placeholder">Table not loaded yet (Classify = 8).</p></div>
++    <div id="tab-dido" class="tab-content"><p class="placeholder">Table not loaded yet (Classify = 9).</p></div>
++    <div id="tab-readonly" class="tab-content"><p class="placeholder">Table not loaded yet (Classify = 12, 13).</p></div>
++
++    <script>
++    function showTab(name) {
++        document.querySelectorAll('.tab-content').forEach(function (el) { el.classList.remove('active'); });
++        document.querySelectorAll('.subtab-btn').forEach(function (el) { el.classList.remove('active'); });
++        var tab = document.getElementById('tab-' + name);
++        if (tab) tab.classList.add('active');
++        var btn = document.querySelector('.subtab-btn[data-tab="' + name + '"]');
++        if (btn) btn.classList.add('active');
++    }
++    </script>
++</body>
++</html>
+diff --git a/web/templates/config.html b/web/templates/config.html
+index a7b34ac..02a03a8 100644
+--- a/web/templates/config.html
++++ b/web/templates/config.html
+@@ -5,7 +5,7 @@
+     <link rel="stylesheet" href="/static/style.css">
+ </head>
+ <body>
+-        <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/video">Video</a>| <a href="/config">Configuration</a> </p>
++        <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a> </p>
+         <h1>Edit Configuration</h1>
+         <form method="post">
+             <fieldset>
+diff --git a/web/templates/motor.html b/web/templates/motor.html
+index 6810d20..0c4c0b4 100644
+--- a/web/templates/motor.html
++++ b/web/templates/motor.html
+@@ -5,7 +5,7 @@
+     <link rel="stylesheet" href="/static/style.css">
+ </head>
+ <body>
+-        <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/video">Video</a>| <a href="/config">Configuration</a> </p>
++        <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a> </p>
+         <h1>Motor Control (Modbus RTU)</h1>
+         <form action="/motor" method="post">
+             <label>Axis:
+diff --git a/web/templates/registers.html b/web/templates/registers.html
+index 20ed434..1eb0b99 100644
+--- a/web/templates/registers.html
++++ b/web/templates/registers.html
+@@ -6,7 +6,7 @@
+ </head>
+ <body>
+     <!--<div class="container">-->
+-    <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/video">Video</a>| <a href="/config">Configuration</a> </p>
++    <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a> </p>
+        <h1>Read/Write Modbus Registers</h1>
+         <form method="post">
+             <label>Slave ID: <input type="number" name="slave_id" value="1"></label>
+diff --git a/web/templates/video.html b/web/templates/video.html
+deleted file mode 100644
+index 1c62833..0000000
+--- a/web/templates/video.html
++++ /dev/null
+@@ -1,12 +0,0 @@
+-<!DOCTYPE html>
+-<html>
+-<head>
+-    <title>Camera Video</title>
+-    <link rel="stylesheet" href="/static/style.css">
+-</head>
+-<body>
+-        <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/video">Video</a>| <a href="/config">Configuration</a> </p>
+-        <h1>Video Stream (MJPEG)</h1>
+-        <img src="/video_feed" alt="Video stream" style="max-width: 100%; border: 1px solid #ccc;">
+-</body>
+-</html>
+\ No newline at end of file
+-- 
+2.39.5
+

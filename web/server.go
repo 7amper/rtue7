@@ -5,17 +5,18 @@ import (
 	"crypto/subtle"
 
 	"embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
 
-	"rtue7/config"
-	"rtue7/modbus_rtu"
-	"rtue7/modbus_tcp"
 	"io/fs"
 	"log"
 	"net/http"
 	"os/exec"
+	"rtue7/config"
+	"rtue7/modbus_rtu"
+	"rtue7/modbus_tcp"
 	"strconv"
 	"strings"
 )
@@ -25,6 +26,9 @@ var tmplFS embed.FS
 
 //go:embed static/*
 var staticFS embed.FS
+
+//go:embed data/*.csv
+var dataFS embed.FS
 
 type WebServer struct {
 	config *config.Config
@@ -48,7 +52,10 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/motor", ws.motorHandler)
 	//http.HandleFunc("/motoraxis", ws.changeAxis)
 	http.HandleFunc("/registers", ws.authMiddleware(ws.registersHandler))
-	http.HandleFunc("/video", ws.videoPage)
+	http.HandleFunc("/video", ws.assunPage)
+	http.HandleFunc("/assun", ws.assunPage)
+	http.HandleFunc("/api/parameters", ws.apiParameters)
+	http.HandleFunc("/api/write", ws.authMiddleware(ws.apiWriteParameter))
 	http.HandleFunc("/video_feed", ws.authMiddleware(ws.videoFeed))
 
 	// Статические файлы
@@ -328,9 +335,201 @@ func (ws *WebServer) registersHandler(w http.ResponseWriter, r *http.Request) {
 	ws.tmpl.ExecuteTemplate(w, "registers.html", nil)
 }
 
+// Страница ASSUN (бывшая Video) с вкладками второго уровня
+func (ws *WebServer) assunPage(w http.ResponseWriter, r *http.Request) {
+	ws.tmpl.ExecuteTemplate(w, "assun.html", nil)
+}
+
+// parseAssunCSV разбирает CSV-файл с разделителем '@' в список параметров.
+// Формат строк: Classify@Address@Name@Value@Unit@DataType@Notes@Display mode@Decimal place
+// Поле Notes может содержать переводы строк и заключаться в двойные кавычки
+// (двойные кавычки внутри поля удваиваются), поэтому разбор идёт посимвольно.
+func parseAssunCSV(content string) []map[string]string {
+	// Разбиваем содержимое на поля (кавычки сохраняются как есть).
+	var fields []string
+	var buf strings.Builder
+	inQuotes := false
+	rs := []rune(content)
+	for i := 0; i < len(rs); i++ {
+		c := rs[i]
+		switch c {
+		case '"':
+			if inQuotes && i+1 < len(rs) && rs[i+1] == '"' {
+				buf.WriteRune('"')
+				i++ // пропуск экранированной кавычки
+				continue
+			}
+			inQuotes = !inQuotes
+		case '@':
+			if !inQuotes {
+				fields = append(fields, buf.String())
+				buf.Reset()
+				continue
+			}
+		}
+		buf.WriteRune(c)
+	}
+	fields = append(fields, buf.String())
+
+	trim := func(s string) string { return strings.TrimSpace(s) }
+
+	var params []map[string]string
+	// Ожидаемое число полей в записи — 9, заголовок тоже содержит 9 полей.
+	const nFields = 9
+	for i := 0; i < len(fields); i += nFields {
+		if i+nFields > len(fields) {
+			break // неполная запись в конце
+		}
+		f := fields[i : i+nFields]
+		classify := trim(f[0])
+		address := trim(f[1])
+		name := trim(f[2])
+		// Пропускаем строку заголовка и полностью пустые записи
+		if classify == "Classify" || (classify == "" && address == "") {
+			continue
+		}
+		params = append(params, map[string]string{
+			"classify":    classify,
+			"address":     address,
+			"name":        name,
+			"value":       trim(f[3]),
+			"unit":        trim(f[4]),
+			"dataType":    trim(f[5]),
+			"notes":       trim(f[6]),
+			"displayMode": trim(f[7]),
+			"decimal":     trim(f[8]),
+		})
+	}
+	return params
+}
+
+// API для страницы ASSUN: ?file=etalon.csv — полный список параметров,
+// ?file=...&slave=N&regs=1000,100A,... — чтение значений из контроллера.
+func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	file := r.URL.Query().Get("file")
+	if file == "" {
+		file = "etalon.csv"
+	}
+	if strings.ContainsAny(file, "/\\..") {
+		http.Error(w, `{"error":"bad file name"}`, http.StatusBadRequest)
+		return
+	}
+	content, err := dataFS.ReadFile("data/" + file)
+	if err != nil {
+		http.Error(w, `{"error":"file not found"}`, http.StatusNotFound)
+		return
+	}
+	out := map[string]interface{}{
+		"file":     file,
+		"params":   parseAssunCSV(string(content)),
+		"live":     false,
+		"slave_id": 0,
+	}
+
+	// Опционально: чтение/запись holding-регистров устройства (Modbus RTU)
+	q := r.URL.Query()
+	if regsStr := q.Get("regs"); regsStr != "" {
+		slaveID, e := strconv.ParseUint(q.Get("slave"), 10, 8)
+		if e != nil || slaveID == 0 {
+			out["error"] = "invalid slave id"
+		} else {
+			addrs := strings.Split(regsStr, ",")
+			if len(addrs) > 125 {
+				addrs = addrs[:125]
+			}
+			// Считываем блоки последовательных адресов
+			values := make(map[string]int64, len(addrs))
+			for k := 0; k < len(addrs); {
+				base, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(addrs[k]), "0x"), 16, 16)
+				if e != nil {
+					k++
+					continue
+				}
+				cnt := 1
+				for k+cnt < len(addrs) && cnt < 125 {
+					next, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(addrs[k+cnt]), "0x"), 16, 16)
+					if e != nil || uint16(next) != uint16(base)+uint16(cnt) {
+						break
+					}
+					cnt++
+				}
+				data, e := modbus_rtu.ReadHoldingRegisters(uint8(slaveID), uint16(base), uint16(cnt))
+				if e != nil {
+					out["error"] = e.Error()
+					break
+				}
+				for j := 0; j < cnt; j++ {
+					key := fmt.Sprintf("%04X", uint16(base)+uint16(j))
+					v := int64(data[j*2])<<8 | int64(data[j*2+1])
+					values[key] = v
+				}
+				k += cnt
+			}
+			out["live"] = true
+			out["slave_id"] = slaveID
+			out["values"] = values
+		}
+	}
+
+	b, _ := json.Marshal(out)
+	w.Write(b)
+}
+
+// POST /api/parameters — запись значения в holding-регистр.
+// Тело запроса (JSON): {"slave":1,"address":"0x1001","value":"1.5","dataType":"Int16"}
+func (ws *WebServer) apiWriteParameter(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Slave    int    `json:"slave"`
+		Address  string `json:"address"`
+		Value    string `json:"value"`
+		DataType string `json:"dataType"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"bad json"}`, http.StatusBadRequest)
+		return
+	}
+	if req.Slave <= 0 || req.Slave > 247 {
+		http.Error(w, `{"error":"invalid slave id"}`, http.StatusBadRequest)
+		return
+	}
+	rawAddr := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(req.Address)), "0x")
+	address64, err := strconv.ParseUint(rawAddr, 16, 16)
+	if err != nil {
+		http.Error(w, `{"error":"invalid address"}`, http.StatusBadRequest)
+		return
+	}
+	address := uint16(address64)
+
+	val, err := strconv.ParseFloat(req.Value, 64)
+	if err != nil {
+		http.Error(w, `{"error":"invalid value"}`, http.StatusBadRequest)
+		return
+	}
+
+	is32 := strings.Contains(strings.ToLower(req.DataType), "32")
+	writeErr := error(nil)
+	if is32 {
+		writeErr = modbus_rtu.WriteDoubleRegister(uint8(req.Slave), address, uint32(int64(val)))
+	} else {
+		writeErr = modbus_rtu.WriteSingleRegister(uint8(req.Slave), address, uint16(int64(val)))
+	}
+	if writeErr != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"ok": false, "error": writeErr.Error()})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "slave": req.Slave, "address": req.Address})
+}
+
 // Страница видео
 func (ws *WebServer) videoPage(w http.ResponseWriter, r *http.Request) {
-	ws.tmpl.ExecuteTemplate(w, "video.html", nil)
+	http.Redirect(w, r, "/assun", http.StatusFound)
+	//ws.tmpl.ExecuteTemplate(w, "video.html", nil)
 }
 
 // MJPEG поток через ffmpeg

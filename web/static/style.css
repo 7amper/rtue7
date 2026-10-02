@@ -16,22 +16,49 @@ h1 {
     font-size: 24px;
     margin-bottom: 20px;
 }
+
+/* ---- Form layout: all input fields start at the same left edge ---- */
+form, fieldset {
+    display: grid;
+    /* col 1 = label text (right-aligned to the longest label), col 2 = controls */
+    grid-template-columns: max-content 1fr;
+    column-gap: 8px;
+    row-gap: 6px;
+    align-items: center;
+}
 fieldset {
+    grid-column: 1 / -1;   /* groups span the whole form width */
     margin-bottom: 15px;
     border: 1px solid #ddd;
     padding: 10px;
 }
-label {
-    display: block;
-    margin: 8px 0;
+legend {
+    grid-column: 1 / -1;
 }
+/* Fallback (browsers without display:contents support): stacked labels, uniform indent */
 input, select {
     padding: 6px;
     margin-left: 8px;
+    width: 300px;
+    max-width: calc(100% - 10px);
+    box-sizing: border-box;
+}
+@supports (display: contents) {
+    label {
+        display: contents; /* let the label's text and control become grid items */
+    }
+    input, select {
+        grid-column: 2;    /* every control shares one left alignment line */
+        margin-left: 0;
+        justify-self: start;
+    }
+    form > div, fieldset > div {
+        grid-column: 1 / -1; /* button rows span both columns */
+    }
 }
 button {
     padding: 8px 16px;
-    margin: 5px;
+    margin: 5px 5px 5px 0;
     background: #007bff;
     color: white;
     border: none;

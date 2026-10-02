@@ -1,29 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Modbus регистры</title>
+    <title>Modbus Registers</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <!--<div class="container">-->
-    <p><a href="/motor">Управление двигателями</a> | <a href="/registers">Регистры</a> | <a href="/video">Видео</a>| <a href="/config">Конфигурация</a> </p>
-       <h1>Чтение/запись Modbus регистров</h1>
+    <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/video">Video</a>| <a href="/config">Configuration</a> </p>
+       <h1>Read/Write Modbus Registers</h1>
         <form method="post">
             <label>Slave ID: <input type="number" name="slave_id" value="1"></label>
-            <label>Тип: 
+            <label>Type: 
                 <select name="reg_type">
                     <option value="holding">Holding Register</option>
                 </select>
             </label>
-            <label>Адрес (0..65535): <input type="number" name="address" value="4096"></label>
-            <label>Значение: <input type="number" name="value" value={{.result}}></label>
+            <label>Address, hex (0x0000..0xFFFF): <input type="text" name="address" value="1000" pattern="[0-9a-fA-FxX]{1,6}" title="Hexadecimal address, e.g. 1000 or 0x1000"></label>
+            <label>Value: <input type="number" name="value" value={{.result}}></label>
             <div>
-                <button type="submit" name="action" value="read">Читать</button>
-                <button type="submit" name="action" value="write">Записать</button>
+                <button type="submit" name="action" value="read">Read</button>
+                <button type="submit" name="action" value="write">Write</button>
             </div>
         </form>
-        {{if .result}}<div class="result">Результат чтения: {{.result}}</div>{{end}}
-        {{if .ok}}<div class="ok">Запись выполнена</div>{{end}}
+        {{if .result}}<div class="result">Read result: {{.result}}</div>{{end}}
+        {{if .ok}}<div class="ok">Write completed</div>{{end}}
     <!--</div>-->
 </body>
 </html>

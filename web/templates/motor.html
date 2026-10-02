@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Управление двигателями</title>
+    <title>Motor Control</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-        <p><a href="/motor">Управление двигателями</a> | <a href="/registers">Регистры</a> | <a href="/video">Видео</a>| <a href="/config">Конфигурация</a> </p>
-        <h1>Управление двигателями (Modbus RTU)</h1>
+        <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/video">Video</a>| <a href="/config">Configuration</a> </p>
+        <h1>Motor Control (Modbus RTU)</h1>
         <form action="/motor" method="post">
-            <label>Ось:
+            <label>Axis:
                 <select name="axis" onchange="this.form.submit()"> 
                     <option value="x" {{if eq .SelAxis "x"}}selected{{end}}>Axis X (slave {{.Motors.AxisX}})</option>
                     <option value="y" {{if eq .SelAxis "y"}}selected{{end}}>Axis Y (slave {{.Motors.AxisY}})</option>
@@ -16,14 +16,14 @@
                     <option value="a" {{if eq .SelAxis "a"}}selected{{end}}>Axis A (slave {{.Motors.AxisA}})</option>
                 </select>
             </label>
-            <label>Скорость (0-1000): <input type="number" name="setspeed" value={{.speedH}} step="0.1" placeholder="0.0"></label>
-            <label>Шаг: <input type="number" name="setpos" value={{.stepH}} step="0.1" placeholder="0.0"></label>
+            <label>Speed (0-1000): <input type="number" name="setspeed" value={{.speedH}} step="0.1" placeholder="0.0"></label>
+            <label>Step: <input type="number" name="setpos" value={{.stepH}} step="0.1" placeholder="0.0"></label>
             <div>
-                <button type="submit" name="direction" value="backward">Назад постоянно</button>
-                <button type="submit" name="direction" value="backwardstep">Назад шаг </button>
-                <button type="submit" name="direction" value="stop">Стоп</button>
-                <button type="submit" name="direction" value="forwardstep">Вперёд шаг </button>
-                <button type="submit" name="direction" value="forward">Вперёд постоянно</button>
+                <button type="submit" name="direction" value="backward">Backward continuous</button>
+                <button type="submit" name="direction" value="backwardstep">Backward step </button>
+                <button type="submit" name="direction" value="stop">Stop</button>
+                <button type="submit" name="direction" value="forwardstep">Forward step </button>
+                <button type="submit" name="direction" value="forward">Forward continuous</button>
             </div>
         </form>
         {{if .error}}<div class="error">Error: {{.message}}</div>{{end}}

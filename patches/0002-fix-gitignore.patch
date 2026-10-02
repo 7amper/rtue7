@@ -1,0 +1,19 @@
+From 13f6f1c Mon Sep 17 00:00:00 2001
+Subject: [PATCH] Fix .gitignore: restore valid content without stray heredoc commands
+
+---
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,5 +1,4 @@
+-cat > .gitignore <<'EOF'
+-# Бинарники
++# Binaries
+ *.exe
+ *.exe~
+ *.dll
+@@ -23,4 +22,3 @@
+ 
+ # Env
+ .env
+-EOF
+\ No newline at end of file

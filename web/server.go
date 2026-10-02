@@ -341,46 +341,32 @@ func (ws *WebServer) assunPage(w http.ResponseWriter, r *http.Request) {
 }
 
 // parseAssunCSV разбирает CSV-файл с разделителем '@' в список параметров.
-// Формат строк: Classify@Address@Name@Value@Unit@DataType@Notes@Display mode@Decimal place
-// Поле Notes может содержать переводы строк и заключаться в двойные кавычки
-// (двойные кавычки внутри поля удваиваются), поэтому разбор идёт посимвольно.
+// Формат строк (по одной записи на строку):
+// Classify@Address@Name@Value@Unit@DataType@Notes@Display mode@Decimal place
+// Разбор идёт построчно: переводы строк внутри полей не поддерживаются,
+// что исключает рассинхронизацию разбивки при лишних/недостающих '@' в строке.
 func parseAssunCSV(content string) []map[string]string {
-	// Разбиваем содержимое на поля (кавычки сохраняются как есть).
-	var fields []string
-	var buf strings.Builder
-	inQuotes := false
-	rs := []rune(content)
-	for i := 0; i < len(rs); i++ {
-		c := rs[i]
-		switch c {
-		case '"':
-			if inQuotes && i+1 < len(rs) && rs[i+1] == '"' {
-				buf.WriteRune('"')
-				i++ // пропуск экранированной кавычки
-				continue
-			}
-			inQuotes = !inQuotes
-		case '@':
-			if !inQuotes {
-				fields = append(fields, buf.String())
-				buf.Reset()
-				continue
-			}
+	trim := func(s string) string {
+		s = strings.TrimSpace(s)
+		// снимаем окружающие двойные кавычки, если поле заключено в них
+		if len(s) >= 2 && strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"") {
+			s = strings.ReplaceAll(s[1:len(s)-1], `""`, `"`)
 		}
-		buf.WriteRune(c)
+		return s
 	}
-	fields = append(fields, buf.String())
-
-	trim := func(s string) string { return strings.TrimSpace(s) }
 
 	var params []map[string]string
 	// Ожидаемое число полей в записи — 9, заголовок тоже содержит 9 полей.
 	const nFields = 9
-	for i := 0; i < len(fields); i += nFields {
-		if i+nFields > len(fields) {
-			break // неполная запись в конце
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimRight(line, "\r")
+		if strings.TrimSpace(line) == "" {
+			continue
 		}
-		f := fields[i : i+nFields]
+		f := strings.Split(line, "@")
+		if len(f) != nFields {
+			continue // повреждённая/неполная строка — пропускаем целиком
+		}
 		classify := trim(f[0])
 		address := trim(f[1])
 		name := trim(f[2])
@@ -409,7 +395,7 @@ func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	file := r.URL.Query().Get("file")
 	if file == "" {
-		file = "etalon.csv"
+		file = "assun.csv"
 	}
 	if strings.ContainsAny(file, "/\\..") {
 		http.Error(w, `{"error":"bad file name"}`, http.StatusBadRequest)

@@ -94,3 +94,18 @@ button:hover {
 .tab-content th, .tab-content td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; font-size: 13px; }
 .tab-content th { background: #f0f0f0; }
 .placeholder { color: #a00; }
+
+/* ASSUN register tables */
+.reg-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+.reg-table th, .reg-table td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; vertical-align: top; }
+.reg-table th { background: #f0f0f0; position: sticky; top: 0; }
+.reg-table td.addr { font-family: monospace; white-space: nowrap; }
+.reg-table td.notes { max-width: 480px; }
+.reg-table input { width: 110px; }
+.val-cell.readonly { color: #666; }
+.live { color: #0a7d2e; font-size: 12px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.subtabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0; }
+.subtab-btn { border: 1px solid #ccc; background: #f7f7f7; padding: 6px 12px; cursor: pointer; border-radius: 4px 4px 0 0; }
+.subtab-btn.active { background: #fff; border-bottom-color: #fff; font-weight: bold; }

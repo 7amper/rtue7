@@ -8,6 +8,19 @@
     <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a> | <a href="/config">Configuration</a></p>
     <h1>ASSUN Register Map</h1>
 
+    <div class="toolbar" style="margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <label>Data source:
+            <select id="fileSel">
+                <option value="assun.csv" selected>ASSUN (assun.csv)</option>
+                <option value="etalon.csv">Etalon (etalon.csv)</option>
+            </select>
+        </label>
+        <label>Slave ID: <input id="slaveId" type="number" min="1" max="247" value="1" style="width:60px"></label>
+        <button id="btnReadAll" title="Read all register values from the controller via Modbus RTU">Read All</button>
+        <button id="btnReload" title="Reload table from CSV file">Reload</button>
+        <span id="statusMsg" style="color:#555;"></span>
+    </div>
+
     <div class="subtabs">
         <button class="subtab-btn active" data-tab="basic" onclick="showTab('basic')">Basic</button>
         <button class="subtab-btn" data-tab="current" onclick="showTab('current')">Current</button>

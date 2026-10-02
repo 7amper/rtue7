@@ -1,0 +1,272 @@
+Classify@Address@Name@Value@Unit@DataType@Notes@Display mode@Decimal place
+1@0x1000@Starting Type@10@(0----10)@Uint16@"Startin Type<br>1. Stop (Self define CAN, RS485, close enable)<br>3. Open the CANOPEN Mode Control (If need to active CAN402 function, must write 3, only for CAN402, switch anabling are decided by ""Controlling Words (0x6040_00)"")<br>10: Operation (Self define CAN, RS485, open enable)"@D@F0
+1@0x1001@Motor Current Set Value@1@0.1A(-32768----32767)@Int16@(Unit 0.1A)@D@F0
+1@0x1002@Motor Speed Set Value@3100@rpm or 0.1rpm(-2147483648----2147483647)@Int32@Unit (rpm or 0.1 rpm, unit decided by 108C bit4)@D@F0
+1@0x1004@Common Acceleration@7000@RPM/sec(0----4294967295)@Uint32@Control the motor accceleration in speed control, means rpm change per second.<br>This parameter only effective when operation curve type (address 1092) is 0 or 2.@D@F0
+1@0x1006@Common Deceleration@7000@RPM/sec(0----4294967295)@Uint32@Control the motor decceleration in speed control, means rpm change per second.<br>This parameter only effective when operation curve type (address 1092) is 0 or 2.@D@F0
+1@0x1008@Motor Position Set Value@5000@Pulse(-2147483648----2147483647)@Int32@Number of Pulse@D@F0
+1@0x100A@Operation Mode@0@H(0000----0017)@Uint16@*Bit0~Bit3<br>0: Position Control<br>1: Speed Control<br>2: Current/Torque Control<br>6. Testing Mode Current/Torque Control(Internal)<br>7. Motor Zero Position Calibration(Internal)<br>#bit4 Choose Torque Direction<br>0: Torqure Direction CCW<br>1: Torque Direction CW@H@F0
+1@0x100B@Order 0@1@H(0000----FFFF)@Uint16@Bit0 1: Servo Start (SON)<br>Bit1 1: Position Control Pulse Error Clearance (CCLR)<br>Bit2 1: Zero Speed Position Clamp (ZCLAMP)<br>Bit3 1: Position Command Trigger (CTRG)<br>Bit4 1: Torque Limit (TRQLM)<br>Bit5 1: Speed Limit (SPDLM)<br>Bit6 1: Position Command 0 (POS0)<br>Bit7 1: Position Command 1 (POS1)<br>Bit8 1: Position Command 2 (POS2)<br>Bit9 1: Speed Command 0 (SPD0)<br>Bit10 1: Speed Command 1 (SPD1)<br>Bit11 1: Torque Command 0 (TCM0)<br>Bit12 1: Torque Command 1 (TCM1)<br>Bit13 1: Mode Shifting Command (S_P)<br>Bit14 1: Mode Shifting Command (S_T)<br>Bit15 1: Mode Shifting Command (T_P)@H@F0
+1@0x100C@Order 1@0@H(0000----FFFF)@Uint16@Bit0 1: Emergency Stop (EMGS)<br>Bit1 1: Clockwise Limit (CWL)<br>Bit2 1: Counter Clockwise Limit (CCWL)<br>Bit3 1: Counter Clockwise Jog (JOGD)<br>Bit4 1: Clockwise Jog (JOGU)<br>Bit5 1: Back to Origin Point (ORGP)<br>Bit6 1: Origin Point Search Command (SHOM)<br>Bit7 1: Pulse Input Prohibit (INHP)<br>Bit8 1: Abnormal Reset (ARST)<br>Bit9 1: Speed Control Gain Shifting (SPEEDKP1)<br>Bit10 1: Position Control Gain Shifting (POSKP1)<br>Bit11 1: Input Inverse Command (CMDINV)<br>Bit12 1: Electronic Gear Numerator 0 (GNUM0)<br>Bit13 1: Electronic Gear Numerator 1 (GNUM1)<br>Bit14 1: Commuinication Protocol (X14)<br>Bit15 1: Cureve Record (GRAPH)@H@F0
+1@0x100D@Calculated Overload Max. Current@18@0.1A(0----65535)@Uint16@Unit (0.1A)Used for Calculating Overload@D@F0
+1@0x100E@Controller Max. Output Current@27@0.1A(0----65535)@Uint16@Unit (0.1)@D@F0
+1@0x100F@Rated Current@9@0.1A(0----65535)@Uint16@Unit (0.1A)Used for Calculating Overload@D@F0
+1@0x1010@Overload Time@5@s(0----65535)@Uint16@Unit: Second(S)<br>Overload Time Peroid Allowed@D@F0
+1@0x1011@Overload Recovery Time@30@s(0----65535)@Uint16@"Unit: Second(S)<br>After ""overload"" malfunction, how many seconds it takes to recover.<br>Note: In CAN402 application, once there are malfucntion, it will lock and not automate recovery"@D@F0
+1@0x1012@Malfucntion Recovery Time@30@s(0----65535)@Uint16@"Unit: Second(S)<br>After ""malfucntion"" malfunction, how many seconds it takes tm recover.<br>Note: In CAN402 application, once there are malfucntion, it will lock and not automate recovery"@D@F0
+1@0x1013@IGBT Malfucntion Recovery Time@30@s(0----65535)@Uint16@"Unit: Second(S)<br>After ""IGBT"" malfunction, how many seconds it takes tm recover.<br>Note: In CAN403 application, once there are malfucntion, it will lock and not automate recovery"@D@F0
+1@0x1014@Brake Starting Delay@0@ms(-32768----32767)@Int16@Unit (mS)<br>When value is negative, open brake delay to set time and then open enable<br>When value is positive, open enable delay to set time then open brake@D@F0
+1@0x1015@Brake Ending Delay@0@ms(-32768----32767)@Int16@Unit (mS)<br>When value is negative, close brake delay to set time and then close enable<br>When value is positive, close enable delay to set time then close brake@D@F0
+1@0x1016@Waiting Time of Torque Release@0@S(0----65535)@Uint16@Waiting time till entering torque release time, Unit: S@D@F0
+1@0x1017@Torque Release Time@0@ms(0----65535)@Uint16@Torque Release time. When set value over 65500, torque keep releasing. Unit: mS@D@F0
+1@0x1018@Torque Release Set Speed@0@x0.1Rpm(0----65535)@Uint16@*Enter Realease Torque Judgement Condition 1<br>When given speed smaller or equal to this speed, the condition satisfied. Defult write 15.@D@F0
+1@0x1019@Torque Release Feedback Speed@0@x0.1Rpm(0----65535)@Uint16@*Enter Realease Torque Judgement Condition 2<br>When feedback speed smaller or equal to this speed, the condition satisfied. Defult write 20.@D@F0
+1@0x101A@Turn-on Torque Release Mode@0@(0----1)@Uint16@@D@F0
+1@0x101B@Choose Release Type@0@(0----1)@Uint16@@D@F0
+1@0x101C@Shut Down Type@0@(0----2)@Uint16@*Stop Type<br>0: Free Stop<br>1: Zero Speed Stop (Relevant parameter address 1013 and 106E, T curve deceleration)<br>2: Zero Speed Stop (Relevant parameter, S curve deceleration)@D@F0
+1@0x101D@Zero Speed Shut Down Ending Speed@100@rpm/0.1rpm(0----65535)@Uint16@Address 1002 effective when stop type to be 1. Zero speed stop to this speed, and keep free operation condition.<br>Unit (rpm or 0.1 rpm, unit is selected by parameter 1044 bit4)@D@F0
+1@0x101E@Zero Speed Shut Down Negative Acceleration@100@RPM/S/S(0----4294967295)@Uint32@Address 1002 effective when stop type to be 1. Control deceleration rate, shows the RPM change per second.<br>Note: Deceleration highest when value is 0.@D@F0
+1@0x1020@Speed or Current Set (Percentage)@10@x0.01%(-32768----32767)@Int16@(Unit 0.01%), choose the fifth based on the given@D@F0
+1@0x1021@BLDC@2@H(0000----FFFF)@Uint16@Bit0: Speed Test Choice 0:AB 1:Hall<br>Bit1: FOC switch 0:BLDC 1:FOC<br>Bit2-3: Zero Speed Type 0: Normal Mode 1:Down three pipe conenction 2: Close Enable@H@F0
+1@0x1022@Check Zero Speed Waiting Time@1000@ms(0----65535)@Uint16@Reserved@D@F0
+1@0x1023@Set Zero Speed Check Threshold@20@ms(0----65535)@Uint16@Reserved@D@F0
+1@0x1024@Shortcut instruction 1@0@(0----65535)@Uint16@Every input automatic clear<br>1: Position Error Clear(position feedback and position given value not cleared)<br>2: Position Error Clearance (Position feedback and position given value all cleared)<br>3. Poition feedback cleared<br>4. Abnormal Reset (Cannot be used in Can402)<br>Following is the shortcut switch method for controlling in USB/RS485,422 mode (Must be in the designated work mode to write in the relevant value, otherwise its not effective)<br>10: Absolute position control shortcut shifting (Directly write to the address motor position set value (1008))<br>11: Absolute position control shortcut shifting (Internal position command POV 0-7 (10DA-10EA))<br>12: Relative position control shortcut shifting (Internal position command POV 0-7 (10DA-10EA))<br>13. Speed mode shortcut shifting (Speed Set value (1002))<br>14. Torque mode shorcut shifting (Current set value (1001))<br>15. Factory testing mode current control (internal) shortcut shifting (current set value (1001))<br>16. Factory electric angle zero calibration mode (internal) shortcut shifting(Current set value (1001))@D@F0
+2@0x1062@Current Supply Method Choice@2@(0----65535)@Uint16@*Current Control Given Value<br>0: CAN402PT mode given value<br>1: User self define given value<br>2: USB/RS485/RS422 given value<br>3. Analogue 0 channel given value<br>4. Analogue 1 channel given value<br>5. PWM Input channel given value<br>15: Maximum current<br>Other value: Reserved 0@D@F0
+2@0x1063@Current Control Supply Percentage@1@(-3.5----3.5)@Q13@Analogue Effective@D@F4
+2@0x1064@Current Control Supply Filter Constant@0@ms(0----65535)@Uint16@mS@D@F0
+2@0x1065@Current Control Limitation Choice@000F@H(0000----FFFF)@Uint16@*Bit0~Bit3:<br>0:CAN402PT Mode given value<br>1:User self define given value<br>2:USB/RS485/RS422 given value<br>3. Analogue 0 channel given value<br>4. Analogue 1 channel given value<br>5. PWM Input channel given value<br>15: Max Current<br>Other value: Reserved 0<br>#Bit4: <br>0: Start Limitation<br>1: From order TRQLM@H@F0
+2@0x1066@Current Set / Limitation 0@0@0.1A(-32768----32767)@Int16@Unit(0.1A)@D@F0
+2@0x1067@Current Set / Limitation 1@0@0.1A(-32768----32767)@Int16@Unit(0.1A)@D@F0
+2@0x1068@Current Set / Limitation 2@0@0.1A(-32768----32767)@Int16@Unit(0.1A)@D@F0
+2@0x1069@Position Limiter Current Limitation@0@0.1A(-32768----32767)@Int16@Unit(0.1A)@D@F0
+2@0x106A@Self-Defined Current Supply@0@(-32768----32767)@Int16@Reserved@D@F0
+3@0x108C@Speed Setting Method Choice@2@H(0000----FFFF)@Uint16@*Bit0~Bit3:<br>0:CAN402 PP Moe Given Value<br>1:CAN402 PV Mode Given Value<br>2:USB/RS485/RS422 Given Value<br>3:Analogue 0 Channel Given Value<br>4:Analogue 1 Channel Given Value<br>5. PWM Input channel given value<br>15: Max. Speed<br>Other Value: Reserved as 0<br>&Bit4:<br>0: unit(rpm)<br>1:Unit(0.1rpm)@H@F0
+3@0x108D@Speed Limitation@2@H(0000----FFFF)@Uint16@*Bit0~Bit3:<br>0:CAN402 PP Moe Given Value<br>1:CAN402 PV Mode Given Value<br>2:USB/RS485/RS422 Given Value<br>3:Analogue 0 Channel Given Value<br>4:Analogue 1 Channel Given Value<br>5. PWM Input channel given value<br>15: Max. Speed<br>Other Value: Reserved as 0<br>&Bit4:<br>0: Start limitation<br>1:From order SPDLM@H@F0
+3@0x108E@Speed Setting Smooth Filtering Time Constant@0@0.1ms(0----65535)@Uint16@ms@D@F0
+3@0x108F@Speed Feedback Smooth Filtering Time Constant@20@0.1ms(0----65535)@Uint16@ms@D@F0
+3@0x1090@Positive Accelerate Smoothing Constant in S-shaped Smooth Curve@0@ms(0----65535)@Uint16@ms@D@F0
+3@0x1091@Negative Accelerate Smoothing Constant in S-shaped Smooth Curve@0@ms(0----65535)@Uint16@ms@D@F0
+3@0x1092@Movement Curve Type@2@(0----2)@Uint16@* Moving curve type<br>0: CAN402 Trapezoid Curve<br>1: S shape Curve (Internal use only)<br>2: Commonly Used Trapezoid Curve@D@F0
+3@0x1093@Speed Setting Percentage@1@(-3.5----3.5)@Q13@Used for Analogue Input Value@D@F4
+3@0x1094@Speed Feedback Percentage@0@(-3.5----3.5)@Q13@Used for Analogue Input Value@D@F4
+3@0x1096@Speed Setting / Limitation 0@0@rpm/0.1rpm(-32768----32767)@Int32@Unit(rpm or0.1rpm, Unit selcted by parameter 108C bit4)@D@F0
+3@0x1098@Speed Setting / Limitation 1@0@rpm/0.1rpm(-32768----32767)@Int32@Unit(rpm or0.1rpm, Unit selcted by parameter 108C bit4)@D@F0
+3@0x109A@Speed Setting / Limitation 2@0@rpm/0.1rpm(-32768----32767)@Int32@Unit(rpm or0.1rpm, Unit selcted by parameter 108C bit4)@D@F0
+3@0x109C@Zero Speed Reaching Error@2@rpm/0.1rpm(-32768----32767)@Int16@Unit(rpm or0.1rpm, Unit selcted by parameter 108C bit4), smaller than this value then output zero speed arrive@D@F0
+3@0x109D@Target Speed Reaching Error@2@rpm/0.1rpm(-32768----32767)@Int16@Unit(rpm or0.1rpm, Unit selcted by parameter 108C bit4), target speed error smaller than this then output zero speed arrive@D@F0
+3@0x109E@Speed Difference Alarm Value@2500@rpm/0.1rpm(-32768----32767)@Int16@Unit(rpm or0.1rpm, Unit selcted by parameter 108C bit4), difference between given speed and feedback speed cannot over this value@D@F0
+3@0x109F@Speed Difference Inspection Time@1500@ms(0----65535)@Uint16@ms@D@F0
+3@0x10A0@Position Limiter Speed Limitation@1000@rpm/0.1rpm(-32768----32767)@Int32@Unit(rpm or0.1rpm, Unit selcted by parameter 108C bit4)@D@F0
+4@0x10D0@Position Control Setting Type Choice@2@(0----65535)@Uint16@* Position control given value<br>0: A/B Pulse (Incremental position control)<br>1: Direction + pulse (Incremental position control)<br>2. USB/RS485/RS422 Absolute given<br>3. POSx Setting (Incremental position control)<br>4. POSx Setting (Absolute position control)<br>5. USB/RS485/RS422 Incremental given value (need to be activated by order 0 position)<br>6. CAN 402 PP CSP mode given<br>7. Reserved<br>8. Reserved<br>Other: Reserved@D@F0
+4@0x10D1@Electronic Gear Numerator 0@2@(1----65535)@Uint16@@D@F0
+4@0x10D2@Electronic Gear Numerator 1@1@(1----65535)@Uint16@@D@F0
+4@0x10D3@Electronic Gear Numerator 2@1@(1----65535)@Uint16@@D@F0
+4@0x10D4@Electronic Gear Denominator@1@(0----65535)@Uint16@@D@F0
+4@0x10D5@Position Reached Inspection Time@1000@ms(0----65535)@Uint16@ms@D@F0
+4@0x10D6@Position Reached Error Scope@5@(0----4294967295)@Uint32@@D@F0
+4@0x10D8@Position Error Checking Time@0@ms(0----65535)@Uint16@ms@D@F0
+4@0x10D9@Pulse Clearance Mode@2@(0----65535)@Uint16@* Pulse clearance mode<br>0: Clear error vaule<br>1: Absolute position clerance<br>2. Position given value and feedback all cleared<br>3. Command Terminate@D@F0
+4@0x10DA@Motor Internal Position Order 0@0@(-2147483648----2147483647)@Int32@@D@F0
+4@0x10DC@Motor Internal Position Order 1@0@(-2147483648----2147483647)@Int32@@D@F0
+4@0x10DE@Motor Internal Position Order 2@0@(-2147483648----2147483647)@Int32@@D@F0
+4@0x10E0@Motor Internal Position Order 3@0@(-2147483648----2147483647)@Int32@@D@F0
+4@0x10E2@Motor Internal Position Order 4@0@(-2147483648----2147483647)@Int32@@D@F0
+4@0x10E4@Motor Internal Position Order 5@0@(-2147483648----2147483647)@Int32@@D@F0
+4@0x10E6@Motor Internal Position Order 6@0@(-2147483648----2147483647)@Int32@@D@F0
+4@0x10E8@Motor Internal Position Order 7@0@(-2147483648----2147483647)@Int32@@D@F0
+4@0x10EA@Origin Point Search@0@H(0000----FFFF)@Uint16@@H@F0
+4@0x10EB@Origin Point Recovery Speed 0@0@rpm/0.1rpm(-32768----32767)@Int16@Unit(rpmor0.1rpm, unit selected by parameter 1044 bit4)@D@F0
+4@0x10EC@Origin Point Recovery Speed 1@0@rpm/0.1rpm(-32768----32767)@Int16@Unit(rpmor0.1rpm, unit selected by parameter 1044 bit4)@D@F0
+4@0x10ED@HomingMethod@0@(-32768----32767)@Int16@Reserved@D@F0
+4@0x10EE@Origin Point Position Value@655000@(-2147483648----2147483647)@Int32@Pulse Number@D@F0
+5@0x114E@RS 422/485 Address@2@(0----65535)@Uint16@0~128@D@F0
+5@0x114F@RS 422/485 Baud Rate@7@(0----65535)@Uint16@"*Baud Rate<br>0:4800;<br>1:9600;<br>2:14400;<br>3:19200;<br>4:38400<br>5:57600<br>6:115200<br>7:230400<br>8:460800<br>9:Self define( See ""RS485 self define baud rate"" parameter)"@D@F0
+5@0x1150@RS 422/485 Modbus Mode@1@(0----65535)@Uint16@* Communication Protocol<br>0: Modbus Acsll<br>1: Modbus RTU@D@F0
+5@0x1151@RS 422/485 Serial Port Parameters@0@H(0000----FFFF)@Uint16@bit 0-3: Digit bits configuration<br>0: 8 bits<br>1: 7 bits<br>bit 4-7:parity configuration<br>0: No Check<br>1: Even Check<br>2: Odd Check<br>bit 8-11:Stop position configuration<br>0: 1 bit<br>1: 1.5 bit<br>2: 2 bits<br>bit 12-15:Data flow control configuration<br>0: No control@H@F0
+5@0x1152@RS 422/485 Self-defined Baud Rate@57600@BPS(100----2000000)@Uint32@"Self define RS baud rate configuration<br>Only choose 9 in ""RS 485 baud rate"" parameter, the self defined baud rate can be effective.<br>Self define baud rate range: 110bps--2,000,000bps. If the set value not within this range, it will be limited in this range after restart."@D@F0
+5@0x1154@CAN Node Address@8@(1----127)@Uint16@CAN Node address@D@F0
+5@0x1155@CAN Communication Choice@1@(0----65535)@Uint16@* CAN Communication protocal selection<br>0: Open self define CAN (Reserved)<br>1: Open CANOPEN<br>2: Open Oscilloscope (Reserved)@D@F0
+5@0x1156@CAN communication Baud Rate@2@(0----7)@Uint16@*CAN Communication Baud Rate Selection<br>0:1000K<br>1:800K<br>2:500K<br>3:250K<br>4:125K<br>5.100K<br>6:50K<br>7:20K@D@F0
+5@0x1157@Simple CAN Self-Report 1 Period Setting@0@(0----65535)@Uint16@ms@D@F0
+5@0x1158@Simple CAN Self-Report 2 Period Setting@0@(0----65535)@Uint16@ms@D@F0
+5@0x1159@Simple CAN Self-Report 3 Period Setting@0@(0----65535)@Uint16@ms@D@F0
+5@0x115A@Communication Time-out Checking Time@0@0.1S(0----65535)@Uint16@Unit: 0.1S<br>Suitable for RS485, self defined CAN, CANOPEN402 Communication@D@F0
+5@0x115B@Check All Communications for Time-out condition@0@0.1S(0----65535)@Uint16@* Choose to check communication overtime (Overtime will cause close enable or emergency brake, or no treatment)<br>0: Check RS485 Communication Overtime<br>1: Check Self define CAN Communication Overtime<br>2: Check CANOPEN402 Communication Overtime<br>3: Currently don't check any communication status@D@F0
+5@0x115C@Communication Time-out Setting@0@0.1S(0----65535)@Uint16@Bit0: 1: Communication Overtime Emergency Stop<br>Bit1: 1:Communication Overtime Enable close@D@F0
+5@0x115D@Function Setting@0@(0----65535)@Uint16@Bit 0:1 Start Easy Can Communicaiton Synchronized Mode@H@F0
+5@0x12A4@CAN 402 Power-on Wating Delay@0@ms(0----10000)@Uint32@@D@F0
+5@0x12A6@Input_Assignment_Positive_Limit_Switch@0@(0----10000)@Uint32@@D@F0
+5@0x12A8@Input_Assignment_Negative_Limit_Switch@0@(0----10000)@Uint32@@D@F0
+5@0x12AA@Input_Assignment_Reference_Switch@0@(0----10000)@Uint32@@D@F0
+5@0x12AC@Input_Assignment_QuickStop_Switch@0@(0----10000)@Uint32@@D@F0
+5@0x12AE@Input_Assignment_QuickStop_CloseEnable_Switch@0@(0----10000)@Uint32@@D@F0
+6@0x117B@Motor Electric Angle Zero Error@3300@x0.1deg(-32768----32767)@Int16@"0.1 deg<br>This parameter is offset of motor zero point and mechanical zero point based on ""Electric Angle Calibration"", cannot be modified, otherwise may cause motor un-controlable."@D@F0
+6@0x117C@Motor Temperature Sensor Choice@0@(0----1)@Uint16@*Motor Temperature Sensor Choice<br>0: No Sensor <br>1: PT100@D@F0
+6@0x117D@Feedback Type@0@H(0000----FFFF)@Uint16@*Bit0~bit3:<br>0: Hall<br>1: ABZUVW Encoder<br>2: ABZ Encoder<br>3: Rotating Encoder<br>4: Analogue 0<br>5: Analogue 1<br>6: Analogue 2<br>7:Analogue 3<br>8:RS485 Absolute Encoder (Effective when Re-charged)<br>9:AB+UVW Encoder<br>A:SSI Absolute Encoder<br>#Bit4~Bit5<br>0: PMSM; <br>1: DC  <br>2: ACI@H@F0
+6@0x117E@Motor Rated Speed@3434@RPM(0----65535)@Uint32@Unit (RPM)<br>Motor Rated  Speed (Actual rated speed)@D@F0
+6@0x1180@Encoder Resolution@1024@(0----4294967296)@Uint32@Incremental Encoder ppr/ Absolute Encoder Single Turn ppr@D@F0
+6@0x1182@Top Speed Limitation@7100@rpm/0.1rpm(0----1000000)@Uint32@Unit(rpm or0.1rpm, unit selected by parameter 108C)<br>Motor actual max. speed limit@D@F0
+6@0x1184@Motor Pole-Pairs Number@1@(0----65535)@Uint16@@D@F0
+6@0x1185@Resolver Pole Pair@0@(0----65535)@Uint16@@D@F0
+6@0x1186@Resolver Phase Compensation@0@(0----50)@Uint16@0~50@D@F0
+6@0x1187@Resolver SIN Gain@0@(-3.5----3.5)@Q13@@D@F4
+6@0x1188@Resolver Phase@0@x0.01deg(-32768----32767)@Int16@x0.01 deg@D@F0
+6@0x1189@Resolver Kp@0@x0.00001(0----65535)@Uint16@x0.00001@D@F0
+6@0x118A@Resolver Ki@0@x0.00001(0----65535)@Uint16@x0.00001@D@F0
+6@0x118B@Resolver COS Gain@0@(-3.5----3.5)@Q13@@D@F4
+6@0x118C@Motor Hall Angle Offset@0.106934@x360deg(-0.99996----0.99996)@Q15@@D@F4
+6@0x118D@Motor Hall Condition 1@2@(-32768----32767)@Int16@@D@F0
+6@0x118E@Motor Hall Condition 2@4@(-32768----32767)@Int16@@D@F0
+6@0x118F@Motor Hall Condition 3@3@(-32768----32767)@Int16@@D@F0
+6@0x1190@Motor Hall Condition 4@6@(-32768----32767)@Int16@@D@F0
+6@0x1191@Motor Hall Condition 5@1@(-32768----32767)@Int16@@D@F0
+6@0x1192@Motor Hall Condition 6@5@(-32768----32767)@Int16@@D@F0
+6@0x1193@Absolute Encoder Control Parameter 1@0@H(0000----FFFF)@Uint16@Write ABC2 Reset Encoder<br>Write AB62 Reset Encoder Turn Number<br>Write ABBA Reset Encoder Error<br>Write AB32 Write EPPROM<br>Write ABEA  Read EPPROM<br>@H@F0
+6@0x1194@Absolute Encoder Control Parameter 2@0@(0----65535)@Uint16@Write 0 means single turn absolute<br>Write 1 means multi-turn absolute@D@F0
+6@0x1195@Hall Cable Order Choice@1@(0----6)@Int16@Hall cable order are defined by feedback of Hall U, V, W cables, commonly, when need to change Hall cable order, need to change hardware connection. Here also provide the software changing method, no need to change hardware connection.<br>Default: 0 (Note activate software configuration)<br>1:<br>2:<br>3:<br>4<br>5:<br>6:@D@F0
+6@0x1196@Set SSI Protocol Type@0@(0----65535)@Uint16@@D@F0
+6@0x1197@Set SSI Communication Direction@0@(-32768----32767)@Int16@0: Normal<br>1: Reversed Rotation<br>This parameter function need SSI encoder provide signal input connection@D@F0
+6@0x1198@Set SSI Communication Zero Point@0@(-32768----32767)@Int16@0: Normal<br>1: Set Zero Point<br>This parameter function need SSI encoder provide signal input connection@D@F0
+6@0x1199@Single Turn@16@(1----128)@Uint16@SSI Absolute encoder effective value should comply with n power of 2@D@F0
+6@0x12B5@Sub-Feedback Type@0@H(0000----FFFF)@Uint16@Reserved@H@F0
+6@0x139C@Encoder Multi-Turn Resolution@0@(0----100000000)@Uint32@Suitable for multi-turn absolute encoder.<br>Absolute Encoder multi-turn resolution (calculated based on the turn bits)@D@F0
+7@0x119C@Current Control PI Percentage Coeffiecient@200@x0.001(0----65535)@Uint16@x0.001 PI adjustment P co-efficient,character get stronger as value rises@D@F0
+7@0x119D@Current Control PI Integral Coeffiecient@150@x0.0001(0----65535)@Uint16@x0.0001 PI adjustment P co-efficient,character get stronger as value rises@D@F0
+7@0x119E@Speed Control Ratio Coeffieicnt 0@80@(0----65535)@Uint16@x0.001 PI adjustment P co-efficient,character get stronger as value rises@D@F0
+7@0x119F@Speed Control Ratio Coeffieicnt 1@0@(0----65535)@Uint16@x0.001 PI adjustment P co-efficient,character get stronger as value rises@D@F0
+7@0x11A0@Speed Control Integration Coefficient@40@(0----65535)@Uint16@x0.00001 PI adjustment I co-efficient,integration effect get stronger as value rises@D@F0
+7@0x11A1@Speed Control front feedback coefficient@0@(0----65535)@Uint16@x0.01 PI adjustment front feedback co-efficient,following character get better as value rises@D@F0
+7@0x11A2@Load Inertia Ratio@2@(0----65535)@Uint16@@D@F0
+7@0x11A3@Speed Control Ratio Coeffieicnt 1 Slection Type@0@(0----65535)@Uint16@* Speed control Percentage coefficient 1 selection method<br>0: Close shifting<br>1: Dlx<br>2: >parameter 10E6 (plus err)<br>3: >parameter 10E6 (Kpps)<br>4: >parameter 10E6 (rpm)@D@F0
+7@0x11A4@Speed Control Ratio Coeffieicnt 2 Shifting Condition@0@(-32768----32767)@Int16@Unit (pulse err, kpps, rpm), when value greater than this then shift parameter to 1@D@F0
+7@0x11A5@Speed Control Ratio Coeffieicnt 3 Shift Smoothing@0@(0----65535)@Uint16@ms@D@F0
+7@0x11A6@Speed Control front feedback Smoothing@0@ms(0----65535)@Uint16@ms@D@F0
+7@0x11A7@Position Control Ratio Coefficient 0@60000@(0----65535)@Uint16@P adjustment percentage coefficient@D@F0
+7@0x11A8@Position Control Ratio Coefficient 1@60000@(0----65535)@Uint16@P adjustment percentage coefficient@D@F0
+7@0x11A9@Position Control Front Feedback Coefficient@60000@(0----65535)@Uint16@@D@F0
+7@0x11AA@Position Control Front Feedback Smoothing@0@ms(0----65535)@Uint16@ms@D@F0
+7@0x11AB@Position Control Ratio Coefficient 1 Selection Type@0@(0----65535)@Uint16@* Position control percentage coefficient 1 selection method<br>0: Close Shifting<br>1: Dlx<br>2. Parameter 10EE (position error)<br>3. Parameter 10EE (Position given frequency)<br>4. Parameter 10EE (rpm)@D@F0
+7@0x11AC@Position Control Ratio Coefficient 1 Shifting Term@0@(0----65535)@Uint16@Unit (pulse/KHz), change to coeffieicnt 1 at this value@D@F0
+7@0x11AD@Position Control Ratio Coefficient 1 Shift Smoothing@0@ms(0----65535)@Uint16@ms@D@F0
+8@0x11EB@First Notch Enable Choice (Position Control)@0@(0----1)@Uint16@1:Enable  <br> 1:Disable@D@F0
+8@0x11EC@First Notch Central Frequency@0@x0.1Hz(20----50000)@Uint16@Set the center frequency of the first resonance control notch filter@D@F0
+8@0x11ED@First Notch Width Choice@0@(50----200)@Uint16@Set the notch width of the first resonance control notch filter (Note: When set larger, phase lag get larger, usually use default value)@D@F0
+8@0x11EE@Second Notch Enable Choice (Speed Control)@0@(0----1)@Uint16@@D@F0
+8@0x11EF@Second Notch Central Frequency@0@x0.1Hz(20----50000)@Uint16@Set the center frequency of the second resonance control notch filter@D@F0
+8@0x11F0@Second Notch Width Choice@0@(50----200)@Uint16@Set the notch width of the second resonance control notch filter (Note: When set larger, phase lag get larger, usually use default value)@D@F0
+8@0x11F1@Third Notch Enable Choice (Torque Control)@0@(0----1)@Uint16@@D@F0
+8@0x11F2@Third Notch Central Frequency@0@x0.1Hz(20----50000)@Uint16@Set the center frequency of the third resonance control notch filter@D@F0
+8@0x11F3@Third Notch Width Choice@0@(50----200)@Uint16@Set the notch width of the third resonance control notch filter (Note: When set larger, phase lag get larger, usually use default value)@D@F0
+8@0x11F4@Position Order Filtering@0@ms(0----65535)@Uint16@ms@D@F0
+9@0x1220@Analogue Input 0 Gain Compensation@1.518@(-3.5----3.5)@Q13@@D@F4
+9@0x1221@Analogue Input 0 Offset Compensation@0@(-32768----32767)@Int16@@D@F0
+9@0x1222@Analogue Input 0 Low Pass Filtering@0@0.1ms(0----32767)@Uint16@0.1ms@D@F0
+9@0x1223@Analogue Input 0 Voltage Dead Zone@50@mV(0----32767)@Uint16@mV@D@F0
+9@0x1224@Analogue Input 1 Gain Compensation@1.518@(-3.5----3.5)@Q13@@D@F4
+9@0x1225@Analogue Input 1 Offset Compensation@0@(-32768----32767)@Int16@@D@F0
+9@0x1226@Analogue Input  Low Pass Filtering@0@0.1ms(0----32767)@Uint16@0.1ms@D@F0
+9@0x1227@Analogue Input 1 Voltage Dead Zone@50@mV(0----32767)@Uint16@mV@D@F0
+9@0x1228@Analogue Input 2 Gain Compensation@0@(-3.5----3.5)@Q13@@D@F4
+9@0x1229@Analogue Input 2 Offset Compensation@0@(-32768----32767)@Int16@@D@F0
+9@0x122A@Analogue Input 2 Low Pass Filtering@0@0.1ms(0----32767)@Uint16@0.1ms@D@F0
+9@0x122B@Analogue Input 2 Voltage Dead Zone@0@mV(0----32767)@Uint16@mV@D@F0
+9@0x122C@Warning Shield@FFFF@H(0000----FFFF)@Uint16@Bitx:0is sheild;<br>1:Activate@H@F0
+9@0x122D@Malfunction Shiled@FFFF@H(0000----FFFF)@Uint16@Bitx:0is sheild;<br>1:Activate@H@F0
+9@0x122E@Malfunction Lock@0@H(0000----FFFF)@Uint16@Bitx:0is auto recovery;<br>1:Locked@H@F0
+9@0x122F@DI Input Filter Response Time@20@ms(0----32767)@Uint16@ms@D@F0
+9@0x1248@Motor Vout0 Test Choice@0@(0----65535)@Uint16@*Vout 0 Testing Selection<br>0: Speed<br>1: Speed Set<br>2: Q Shaft Current<br>3. Q Shaft Current Given Value<br>4. D Shaft Current<br>5. Electric Angle<br>6. Position Error Pulse<br>7. Acceleration@D@F0
+9@0x1249@Vout0 Output Percentage@0@(-31.5----31.5)@Q10@@D@F4
+9@0x124A@Motor Vout1 Test Choice@0@(0----65535)@Uint16@*Vout 1 Testing Selection<br>0: Speed<br>1: Speed Set<br>2: Q Shaft Current<br>3. Q Shaft Current Given Value<br>4. D Shaft Current<br>5. Electric Angle<br>6. Position Error Pulse<br>7. Acceleration@D@F0
+9@0x124B@Vout1 Output Percentage@0@(-31.5----31.5)@Q10@A 1ff1cOiv1@D@F4
+9@0x124C@Motor Vout2 Test Choice@0@(0----65535)@Uint16@*Vout 2 Testing Selection<br>0: Speed<br>1: Speed Set<br>2: Q Shaft Current<br>3. Q Shaft Current Given Value<br>4. D Shaft Current<br>5. Electric Angle<br>6. Position Error Pulse<br>7. Acceleration@D@F0
+9@0x124D@Vout2 Output Percentage@0@(-31.5----31.5)@Q10@A 2ff2cOiv2@D@F4
+9@0x124E@Motor Vout3 Test Choice@0@(0----65535)@Uint16@*Vout 3 Testing Selection<br>0: Speed<br>1: Speed Set<br>2: Q Shaft Current<br>3. Q Shaft Current Given Value<br>4. D Shaft Current<br>5. Electric Angle<br>6. Position Error Pulse<br>7. Acceleration@D@F0
+9@0x124F@Vout3 Output Percentage@0@(-31.5----31.5)@Q10@A 3ff3cOiv3@D@F4
+9@0x1250@Motor Vout4 Test Choice@0@H(0000----FFFF)@Uint16@@H@F0
+9@0x1251@Motor Vout5 Test Choice@0@H(0000----FFFF)@Uint16@@H@F0
+9@0x1254@Curve Type@0@H(0000----FFFF)@Uint16@Bit0~bit3<br>0:Square wave<br>1:Sin wave<br>2:triangle wace<br>3:Trapezoid wave<br>#Bit4~bit7:1~10<br>wave cycles@H@F0
+9@0x1255@Cure Sampling Time@0@ms(0----65535)@Uint16@ms@D@F0
+9@0x1256@Curve Amplitude@0@permille(0----65535)@Uint16@permille@D@F0
+12@0x1288@Bus Voltage Gain@0.1442@(-3.5----3.5)@Q13@@D@F0
+12@0x1289@Bus Voltage Offset@0@(-32768----32767)@Int16@@D@F0
+12@0x128A@Motor Phase U Current Gain Compensation@1@(-3.5----3.5)@Q13@@D@F0
+12@0x128B@Motor Phase U Current Offset Compensation@21@mV(-32768----32767)@Int16@Different motor, different offset@D@F0
+12@0x128C@Motor Phase W Current Gain Compensation@1@(-3.5----3.5)@Q13@@D@F4
+12@0x128D@Motor Phase W Current Offset Compensation@21@mV(-32768----32767)@Int16@Different motor, different offset@D@F0
+12@0x128E@Radiator Fan Stop Temperature@35@degC(-32768----32767)@Int16@degC@D@F0
+12@0x128F@Radiator Fan Start Temperature@40@degC(-32768----32767)@Int16@degC@D@F0
+12@0x1290@Controller Overheat Recovery Temperature@85@degC(-32768----32767)@Int16@degC@D@F0
+12@0x1291@Controller Stop Temperature@90@degC(-32768----32767)@Int16@degC@D@F0
+12@0x1292@Controller Alarming Temperature@0@degC(-32768----32767)@Int16@degC@D@F0
+12@0x1293@Motor Alarming Temperature@150@degC(0----65535)@Uint16@degC@D@F0
+12@0x1294@Motor Stop Temperature@170@degC(0----65535)@Uint16@degC@D@F0
+12@0x1295@Drive Frequency@16@kHZ(0----22)@Uint16@kHZ@D@F0
+12@0x1296@Current Set-value@445@0.1A(0----65535)@Uint16@Unit (0.1A)@D@F0
+12@0x1297@Reserved Parameter@0@H(0000----FFFF)@Uint16@AA60 Keep Parameter<br>Other value not effective@H@F0
+12@0x1298@Bus Voltage Low Protection Value@10@V(0----65535)@Uint16@V@D@F1
+12@0x1299@Bus Voltage Over Protection Value@75@V(0----65535)@Uint16@V@D@F2
+12@0x129A@Start Filtering@0@(0----1)@Int16@Turn on FIR Filtering<br>0: Closed<br>1: Start@D@F0
+12@0x129B@@445@0.1A(0----65535)@Uint16@Unit (0.1A)@D@F0
+12@0x129C@Controller Allowed Max. Current@140@0.1A(0----65535)@Uint16@Controller Allowed Max. Current@D@F0
+12@0x129D@Rated RPM Attenuation Coefficient@0@%(0----1000)@Int16@Reserved@D@F0
+12@0x12A3@Current Given Direction@0@(0---10)@Uint16@Encoder speed test, sometimes test for current control. When speed feedback is negative, could use software to change the speed feedback to be positive.<br>Default is 0<br>Write 1, and then direction change@D@F0
+12@0x12B0@CPU Temnperature Alarm Threshold@82@(0----10000)@Uint16@Unit degC@D@F0
+12@0x12B1@End Voltage Low Condition@0@(0----32767)@Uint16@The fucntion kept@D@F0
+12@0x12B2@Drain Voltage@81@(0----32767)@Uint16@When test bus voltage over than this threshold, will close the switch of connected drain resistor@D@F0
+12@0x12B3@Motor Rated Voltage@65@(0----32767)@Uint16@Must be written based on current power source, motor nominal voltage, this will impact the drain voltage@D@F0
+12@0x12B4@Speed Feedback Direction@0@(-32768----32767)@Int16@The fucntion kept@D@F0
+12@0x12B6@Current Feedback Filtering Times@200@(0----5000)@Uint16@Reserved@D@F0
+12@0x12B7@Speed Feedback Filtering Times@2000@(0----5000)@Uint16@Reserved@D@F0
+12@0x12B8@IGBT Protection Filtering Times@10@(0----500)@Uint16@Reserved@D@F0
+12@0x12B9@Hall Signal Fault Condition Filtering Times@20@(0----500)@Uint16@Reserved@D@F0
+12@0x1344@Reserved@0@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+12@0x1346@Reserved@0@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+12@0x1348@Reserved@0@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+12@0x134A@Reserved@0@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+13@0x1301@IO Input Signal@001F@H(0000----FFFF)@Uint16@Outside IO portal input signal voltage level@H@F0
+13@0x1302@IO Output Signal@0@H(0000----FFFF)@Uint16@Outside IO portal output signal voltage level@H@F0
+13@0x1303@Real time fault 1@0@H(0000----FFFF)@Uint16@Bit0 1: Power low voltage (PwrLow)<br>Bit1 1: Motor position error (PosErr)<br>Bit2 1: Motor hall error (feedback error) (HallErr)<br>Bit3 1: Motor overcurrent (CurOvr)<br>Bit4 1: Motor overload(DrvOvr)<br>Bit5 1: EEPROM Malfucntion(EromRrr)<br>Bit6 1: Motor IGBT Malfunction(IGBTErr)<br>Bit7 1: Controller overheat (DrvHot)<br>Bit8 1: Motor phase lost (MotErr)<br>Bit9 1: Motor current error (CurErr)<br>Bit10 1Motor speed error (SpdErr)<br>Bit11 1: Motor overheat (MotHot)<br>Bit12 1: Power over voltage (PwrHig)<br>Bit13 1:ABS Communciation Malfunction<br>Bit15 1: Locked@H@F0
+13@0x1304@Real time status 1@001F@H(0000----FFFF)@Uint16@Bit0 1: Servo ready<br>Bit1 1:Servo operation<br>Bit2 1:Zero speed operation<br>Bit3 1:Target speed reached<br>Bit4 1:Target position reached<br>Bit5 1: Torque limit<br>Bit6 1: Warning<br>Bit7 1: Brake output<br>Bit8 1: Origin point back finish<br>Bit9 1:Overload threshold<br>Bit10 1:Wrong warning<br>Bit11 1:Order finish<br>Bit12 1:Reverse stall<br>Bit13 1:Positive stall<br>Bit14 1:Reverse indication<br>Bit15 1:Positive indication@H@F0
+13@0x1305@Motor Actual Current Value@0@0.1A(-32768----32767)@Int16@(Unit 0.1A)@D@F0
+13@0x1306@Motor Speed Feedback Value@-1@rpm/0.1rpm(-2147483648----2147483647)@Int32@Unit(rpm or 0.1rpm, Unit selected parameter  108C bit4)@D@F0
+13@0x1308@Motor Current Position Value@4999@(-2147483648----2147483647)@Int32@In time update@D@F0
+13@0x130A@Controller Malfunction Signal 2@0@H(0000----FFFF)@Uint16@IU:1;  BIT0:<br>IW:1;  BIT1:<br>COS:1;  BIT2:<br>  SIN:1;  BIT3:<br> ADC1:1;  BIT4:<br>  RS485_timeout:1; BIT5:<br>Can_timeout:1; BIT6:<br>   Canopen_timeout:1;  BIT7:<br>Reserved;  BIT8~BIT15:@H@F0
+13@0x130B@Condition Signal 2@0@H(0000----FFFF)@Uint16@@H@F0
+13@0x130C@Controller Malfunction Signal 3@0@H(0000----FFFF)@Uint16@@H@F0
+13@0x130D@Controller Temperature@27@degC(-32768----32767)@Int16@Shows controller power part current temperature (degC)@D@F0
+13@0x130E@Motor Temperature@0@degC(-32768----32767)@Int16@(Unit degC)@D@F0
+13@0x130F@CPU Temnperature@-6@(-0.99996----0.99996)@Int16@(Unit degC)@D@F0
+13@0x1310@Bus Voltage@2428@0.01V(-32768----32767)@Int16@(Unit 0.01V)@D@F0
+13@0x1311@Analogue Input 0 Voltage@0@mV(-32768----32767)@Int16@(Unit mV)@D@F0
+13@0x1312@Analogue Input 1 Voltage@0@(-32768----32767)@Int16@(Unit mV)@D@F0
+13@0x1313@Analogue Input 2 Voltage@0@(-32768----32767)@Int16@(Unit mV)@D@F0
+13@0x1314@Phase U Current Value@-1@0.1A(-32768----32767)@Int16@(Unit 0.1A)@D@F0
+13@0x1315@Phase W Current Value@-1@0.1A(-32768----32767)@Int16@(Uinit 0.1A)@D@F0
+13@0x1316@Phase V Current Value@0@0.1A(-32768----32767)@Int16@(Unit 0.1A)@D@F0
+13@0x1318@Speed Acceleration@0@(-32768----32767)@Int16@Acceleration@D@F0
+13@0x1319@Electric Angle@0.106934@(-0.99996----0.99996)@Q15@x360 deg@D@F0
+13@0x131B@Incremental Encoder Variation@0@(0----65535)@Uint16@Real time inspect incremental encoder variation@D@F0
+13@0x131C@Hall Condition@5@(-32768----32767)@Uint16@Motor current Hall condition@D@F0
+13@0x131D@CAN Communication Receiving Frames Number@0@(0----65535)@Uint16@Every power-on initial value to be 0, no matter what CAN communication, every time receive one frame correct report, this register will add 1. This parameter is not involved in calculation, so overflow is allowed (after overflow, restart from 0)@D@F0
+13@0x131E@Absolute Encoder Offset@4096@(-2147483648----2147483647)@Int32@Position numbern from absolute encoder@D@F0
+13@0x1321@Z Pulse Accummulation@0@(0----65535)@Uint16@Receive one Z channel pulse then add 1@D@F0
+13@0x1323@Last Malfunction 1@0@H(0000----FFFF)@Uint16@Record last controller malfucntion signal 1@H@F0
+13@0x1324@MOS Tube Bus Voltage@0@(0----65535)@Uint16@Reserved@D@F0
+13@0x1325@Real time fault 2@0@H(0000----FFFF)@Uint16@@H@F0
+13@0x1326@Real time status 2@0@H(0000----FFFF)@Uint16@@H@F0
+13@0x1328@Absolute Encoder Revolve Number@43168@(0----2147483647)@Uint32@Number of Pulse@D@F0
+13@0x132A@Absolute Encoder PPR Number@46513@(0----2147483647)@Uint32@Number of Pulse@D@F0
+13@0x132E@Current Enabling Lasting Time@1415@0.1s(0----4294967295)@Uint32@Everytime power-on then reset to zero<br>Unit:0.1ms@D@F0
+13@0x1330@Last Enabling Lasting Time@488@0.1s(0----4294967295)@Uint32@Everytime power-on then reset to zero<br>Unit:0.1ms@D@F0
+13@0x1332@Internal Software Version 1@2550@H(0000----FFFF)@Uint16@@H@F0
+13@0x1333@Internal Hardware Version 1@1020@H(0000----FFFF)@Uint16@@H@F0
+13@0x1334@Controller Production Series Number@5@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+13@0x1336@Internal Hardware Version 2@8@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+13@0x1338@Internal Software Version 2@A0302005@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+13@0x133A@Controller Production Date@20240305@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+13@0x133C@Controller Software Version Date@20231218@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+13@0x133E@Controller Product Number@1013@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+13@0x1340@Controller Product Number Modifying Date@20200715@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+13@0x1342@Controller Model@0@H(00000000----FFFFFFFF)@Uint32@Reserved@H@F0
+13@0x134C@Absolute Communication Receiving Frame Number@0@(0----65535)@Uint16@@D@F0
+13@0x134D@Absolute Communication Sending Frame Number@0@(0----65535)@Uint16@@D@F0

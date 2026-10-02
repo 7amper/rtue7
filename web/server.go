@@ -9,13 +9,13 @@ import (
 	"html/template"
 	"io"
 
+	"rtue7/config"
+	"rtue7/modbus_rtu"
+	"rtue7/modbus_tcp"
 	"io/fs"
 	"log"
 	"net/http"
 	"os/exec"
-	"rtue7/config"
-	"rtue7/modbus_rtu"
-	"rtue7/modbus_tcp"
 	"strconv"
 	"strings"
 )
@@ -283,7 +283,10 @@ func (ws *WebServer) registersHandler(w http.ResponseWriter, r *http.Request) {
 		sl, _ := strconv.ParseUint(r.FormValue("slave_id"), 10, 8)
 		slaveID := uint8(sl)
 		regType := r.FormValue("reg_type")
-		address, _ := strconv.ParseUint(r.FormValue("address"), 10, 16)
+		// Address is entered in hexadecimal (e.g. 0x1234 or 1234)
+		rawAddr := strings.TrimSpace(r.FormValue("address"))
+		rawAddr = strings.TrimPrefix(strings.ToLower(rawAddr), "0x")
+		address, _ := strconv.ParseUint(rawAddr, 16, 16)
 		valueStr := r.FormValue("value")
 
 		if r.FormValue("action") == "read" {

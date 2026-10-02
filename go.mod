@@ -1,4 +1,4 @@
-module github.com/7amper/rtue7
+module rtue7
 
 go 1.26.5
 

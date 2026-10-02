@@ -1,0 +1,59 @@
+From cfe643f653a9db4080490c4d4e3ea5c56961a8fa Mon Sep 17 00:00:00 2001
+From: "qwen.ai[bot]" <qwenlm-intl@service.alibaba.com>
+Date: Thu, 1 Oct 2026 11:44:02 +0000
+Subject: [PATCH] Accept hex input for register Address on registers page
+
+---
+ web/server.go                | 11 +++++++----
+ web/templates/registers.html |  2 +-
+ 2 files changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/web/server.go b/web/server.go
+index d499f1a..7c08be3 100644
+--- a/web/server.go
++++ b/web/server.go
+@@ -9,13 +9,13 @@ import (
+ 	"html/template"
+ 	"io"
+ 
++	"rtue7/config"
++	"rtue7/modbus_rtu"
++	"rtue7/modbus_tcp"
+ 	"io/fs"
+ 	"log"
+ 	"net/http"
+ 	"os/exec"
+-	"rtue7/config"
+-	"rtue7/modbus_rtu"
+-	"rtue7/modbus_tcp"
+ 	"strconv"
+ 	"strings"
+ )
+@@ -283,7 +283,10 @@ func (ws *WebServer) registersHandler(w http.ResponseWriter, r *http.Request) {
+ 		sl, _ := strconv.ParseUint(r.FormValue("slave_id"), 10, 8)
+ 		slaveID := uint8(sl)
+ 		regType := r.FormValue("reg_type")
+-		address, _ := strconv.ParseUint(r.FormValue("address"), 10, 16)
++		// Address is entered in hexadecimal (e.g. 0x1234 or 1234)
++		rawAddr := strings.TrimSpace(r.FormValue("address"))
++		rawAddr = strings.TrimPrefix(strings.ToLower(rawAddr), "0x")
++		address, _ := strconv.ParseUint(rawAddr, 16, 16)
+ 		valueStr := r.FormValue("value")
+ 
+ 		if r.FormValue("action") == "read" {
+diff --git a/web/templates/registers.html b/web/templates/registers.html
+index eaddf03..20ed434 100644
+--- a/web/templates/registers.html
++++ b/web/templates/registers.html
+@@ -15,7 +15,7 @@
+                     <option value="holding">Holding Register</option>
+                 </select>
+             </label>
+-            <label>Address (0..65535): <input type="number" name="address" value="4096"></label>
++            <label>Address, hex (0x0000..0xFFFF): <input type="text" name="address" value="1000" pattern="[0-9a-fA-FxX]{1,6}" title="Hexadecimal address, e.g. 1000 or 0x1000"></label>
+             <label>Value: <input type="number" name="value" value={{.result}}></label>
+             <div>
+                 <button type="submit" name="action" value="read">Read</button>
+-- 
+2.39.5
+

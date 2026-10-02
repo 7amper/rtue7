@@ -15,7 +15,7 @@
                     <option value="holding">Holding Register</option>
                 </select>
             </label>
-            <label>Address (0..65535): <input type="number" name="address" value="4096"></label>
+            <label>Address, hex (0x0000..0xFFFF): <input type="text" name="address" value="1000" pattern="[0-9a-fA-FxX]{1,6}" title="Hexadecimal address, e.g. 1000 or 0x1000"></label>
             <label>Value: <input type="number" name="value" value={{.result}}></label>
             <div>
                 <button type="submit" name="action" value="read">Read</button>

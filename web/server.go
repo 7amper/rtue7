@@ -52,6 +52,7 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/video", ws.assunPage)
 	http.HandleFunc("/assun", ws.assunPage)
 	http.HandleFunc("/api/parameters", ws.apiParameters)
+	http.HandleFunc("/api/read", ws.apiReadRegister)
 	http.HandleFunc("/api/write", ws.authMiddleware(ws.apiWriteParameter))
 
 	// Статические файлы
@@ -417,7 +418,22 @@ func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
 			if len(addrs) > 125 {
 				addrs = addrs[:125]
 			}
-			// Считываем блоки последовательных адресов
+			// Количество 16-битных регистров для каждого адреса (по Data Type: Int32/Uint32 = 2).
+			counts := make(map[uint16]int, len(addrs))
+			for _, p := range out["params"].([]map[string]string) {
+				a64, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(p["address"]), "0x"), 16, 16)
+				if e != nil {
+					continue
+				}
+				c := 1
+				if strings.Contains(strings.ToLower(p["dataType"]), "32") {
+					c = 2
+				}
+				if counts[uint16(a64)] < c {
+					counts[uint16(a64)] = c
+				}
+			}
+			// Считываем блоки последовательных адресов с учётом размера значения
 			values := make(map[string]int64, len(addrs))
 			for k := 0; k < len(addrs); {
 				base, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(addrs[k]), "0x"), 16, 16)
@@ -425,13 +441,21 @@ func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
 					k++
 					continue
 				}
-				cnt := 1
+				need := counts[uint16(base)] // сколько слов занимает значение по адресу base
+				if need == 0 {
+					need = 1
+				}
+				cnt := need
 				for k+cnt < len(addrs) && cnt < 125 {
 					next, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(addrs[k+cnt]), "0x"), 16, 16)
 					if e != nil || uint16(next) != uint16(base)+uint16(cnt) {
 						break
 					}
-					cnt++
+					n := counts[uint16(next)]
+					if n == 0 {
+						n = 1
+					}
+					cnt += n
 				}
 				data, e := modbus_rtu.ReadHoldingRegisters(uint8(slaveID), uint16(base), uint16(cnt))
 				if e != nil {
@@ -443,6 +467,15 @@ func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
 					v := int64(data[j*2])<<8 | int64(data[j*2+1])
 					values[key] = v
 				}
+				// Для 32-битных значений собираем пару слов в один raw-int32
+				// (порядок слов такой же, как в WriteDoubleRegister: low word first).
+				if need == 2 && cnt >= 2 {
+					lo := values[fmt.Sprintf("%04X", uint16(base))]
+					hi := values[fmt.Sprintf("%04X", uint16(base)+1)]
+					combined := int64(int32(uint32(hi)<<16 | uint32(lo)))
+					delete(values, fmt.Sprintf("%04X", uint16(base)+1))
+					values[fmt.Sprintf("%04X", uint16(base))] = combined
+				}
 				k += cnt
 			}
 			out["live"] = true
@@ -453,6 +486,52 @@ func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
 
 	b, _ := json.Marshal(out)
 	w.Write(b)
+}
+
+// GET /api/read?slave=N&address=0x1002&count=2 — чтение одного значения
+// (count = количество 16-битных регистров: 1 для Int16/Uint16, 2 для Int32/Uint32).
+func (ws *WebServer) apiReadRegister(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	q := r.URL.Query()
+	slaveID, e := strconv.ParseUint(q.Get("slave"), 10, 8)
+	if e != nil || slaveID == 0 {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "invalid slave id"})
+		return
+	}
+	rawAddr := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(q.Get("address"))), "0x")
+	addr64, e := strconv.ParseUint(rawAddr, 16, 16)
+	if e != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": "invalid address"})
+		return
+	}
+	count := 1
+	if c := q.Get("count"); c != "" {
+		n, e := strconv.Atoi(c)
+		if e != nil || n < 1 || n > 2 {
+			json.NewEncoder(w).Encode(map[string]interface{}{"error": "invalid count"})
+			return
+		}
+		count = n
+	}
+	data, e := modbus_rtu.ReadHoldingRegisters(uint8(slaveID), uint16(addr64), uint16(count))
+	if e != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"error": e.Error()})
+		return
+	}
+	var value int64
+	if count == 2 {
+		lo := int64(data[0])<<8 | int64(data[1])
+		hi := int64(data[2])<<8 | int64(data[3])
+		value = int64(int32(uint32(hi)<<16 | uint32(lo)))
+	} else {
+		value = int64(data[0])<<8 | int64(data[1])
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ok":      true,
+		"slave":   slaveID,
+		"address": strings.ToUpper(rawAddr),
+		"value":   value,
+	})
 }
 
 // POST /api/parameters — запись значения в holding-регистр.

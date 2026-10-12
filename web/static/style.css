@@ -130,3 +130,5 @@ button:hover {
 .reg-table input { width: 110px; }
 .val-cell.readonly { color: #666; }
 .live { color: #0a7d2e; font-size: 12px; }
+.reg-table td.row-actions { white-space: nowrap; }
+.reg-table td.row-actions button { margin-right: 4px; padding: 2px 8px; font-size: 12px; }

@@ -16,7 +16,8 @@
             </select>
         </label>
         <label>Slave ID: <input id="slaveId" type="number" min="1" max="247" value="1" style="width:60px"></label>
-        <button id="btnReadAll" title="Read all register values from the controller via Modbus RTU">Read All</button>
+        <button id="btnReadAll" title="Read all registers of the current tab from the controller via Modbus RTU">Read All</button>
+        <button id="btnWriteAll" title="Write all cells of the selected Classify (current tab) to the controller via Modbus RTU">Write All</button>
         <button id="btnReload" title="Reload table from CSV file">Reload</button>
         <span id="statusMsg" style="color:#555;"></span>
     </div>

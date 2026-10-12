@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 
 	"embed"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -414,73 +415,83 @@ func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
 		if e != nil || slaveID == 0 {
 			out["error"] = "invalid slave id"
 		} else {
-			addrs := strings.Split(regsStr, ",")
-			if len(addrs) > 125 {
-				addrs = addrs[:125]
+			// Каждый элемент списка — "адрес@Data Type", например "0x1004@Uint32".
+			// Размер и интерпретация значения берутся из колонки Data Type.
+			type regReq struct {
+				addr uint16
+				size int    // количество 16-битных регистров: 1 или 2
+				sign bool   // true для Int16/Int32 (дополнительный код)
 			}
-			// Количество 16-битных регистров для каждого адреса (по Data Type: Int32/Uint32 = 2).
-			counts := make(map[uint16]int, len(addrs))
-			for _, p := range out["params"].([]map[string]string) {
-				a64, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(p["address"]), "0x"), 16, 16)
+			items := strings.Split(regsStr, ",")
+			reqs := make([]regReq, 0, len(items))
+			for _, item := range items {
+				item = strings.TrimSpace(item)
+				if item == "" {
+					continue
+				}
+				size, sign := 1, false
+				if at := strings.IndexByte(item, '@'); at >= 0 {
+					dt := strings.ToLower(strings.TrimSpace(item[at+1:]))
+					item = item[:at]
+					if strings.Contains(dt, "32") {
+						size = 2
+					}
+					sign = strings.HasPrefix(dt, "int") // Int16 / Int32
+				}
+				a64, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(item), "0x"), 16, 16)
 				if e != nil {
 					continue
 				}
-				c := 1
-				if strings.Contains(strings.ToLower(p["dataType"]), "32") {
-					c = 2
-				}
-				if counts[uint16(a64)] < c {
-					counts[uint16(a64)] = c
-				}
+				reqs = append(reqs, regReq{uint16(a64), size, sign})
 			}
-			// Считываем блоки последовательных адресов с учётом размера значения
-			values := make(map[string]int64, len(addrs))
-			for k := 0; k < len(addrs); {
-				base, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(addrs[k]), "0x"), 16, 16)
-				if e != nil {
-					k++
-					continue
-				}
-				need := counts[uint16(base)] // сколько слов занимает значение по адресу base
-				if need == 0 {
-					need = 1
-				}
-				cnt := need
-				for k+cnt < len(addrs) && cnt < 125 {
-					next, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(addrs[k+cnt]), "0x"), 16, 16)
-					if e != nil || uint16(next) != uint16(base)+uint16(cnt) {
+			if len(reqs) > 125 {
+				reqs = reqs[:125]
+			}
+			// Считываем блоки последовательных адресов с учётом размера значения.
+			values := make(map[string]int64, len(reqs))
+			for k := 0; k < len(reqs); {
+				base := reqs[k].addr
+				cnt := reqs[k].size
+				for k+cnt < len(reqs) && cnt < 125 {
+					if reqs[k+cnt].addr != base+uint16(cnt) {
 						break
 					}
-					n := counts[uint16(next)]
-					if n == 0 {
-						n = 1
-					}
-					cnt += n
+					cnt += reqs[k+cnt].size
 				}
-				data, e := modbus_rtu.ReadHoldingRegisters(uint8(slaveID), uint16(base), uint16(cnt))
+				data, e := modbus_rtu.ReadHoldingRegisters(uint8(slaveID), base, uint16(cnt))
 				if e != nil {
 					out["error"] = e.Error()
 					break
 				}
+				words := make([]uint16, cnt)
 				for j := 0; j < cnt; j++ {
-					key := fmt.Sprintf("%04X", uint16(base)+uint16(j))
-					v := int64(data[j*2])<<8 | int64(data[j*2+1])
-					values[key] = v
+					words[j] = binary.BigEndian.Uint16(data[j*2 : j*2+2])
 				}
-				// Для 32-битных значений собираем пару слов в один raw-int32
-				// (порядок слов такой же, как в WriteDoubleRegister: low word first).
-				if need == 2 && cnt >= 2 {
-					lo := values[fmt.Sprintf("%04X", uint16(base))]
-					hi := values[fmt.Sprintf("%04X", uint16(base)+1)]
-					combined := int64(int32(uint32(hi)<<16 | uint32(lo)))
-					delete(values, fmt.Sprintf("%04X", uint16(base)+1))
-					values[fmt.Sprintf("%04X", uint16(base))] = combined
+				// Интерпретация прочитанных слов согласно Data Type:
+				// Uint16 — беззнаковое 16-бит; Int16 — знаковое 16-бит;
+				// Uint32/Int32 — два слова (low word first, как в WriteDoubleRegister),
+				// Int32 — знаковое (дополнительный код), Uint32 — беззнаковое.
+				for j := 0; j < cnt; j += reqs[k+j].size {
+					key := fmt.Sprintf("%04X", base+uint16(j))
+					var v int64
+					if reqs[k+j].size == 2 {
+						u := uint32(words[j+1])<<16 | uint32(words[j])
+						if reqs[k+j].sign {
+							v = int64(int32(u)) // Int32
+						} else {
+							v = int64(u) // Uint32
+						}
+					} else if reqs[k+j].sign {
+						v = int64(int16(words[j])) // Int16
+					} else {
+						v = int64(words[j]) // Uint16
+					}
+					values[key] = v
 				}
 				k += cnt
 			}
 			out["live"] = true
 			out["slave_id"] = slaveID
-			out["values"] = values
 		}
 	}
 
@@ -488,8 +499,10 @@ func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-// GET /api/read?slave=N&address=0x1002&count=2 — чтение одного значения
-// (count = количество 16-битных регистров: 1 для Int16/Uint16, 2 для Int32/Uint32).
+// GET /api/read?slave=N&address=0x1002&type=Int32 — чтение одного значения.
+// Тип берётся из колонки Data Type: Uint16/Int16 — 1 регистр, Uint32/Int32 — 2 регистра;
+// Int16/Int32 интерпретируются как знаковые (дополнительный код),
+// Uint16/Uint32 — как беззнаковые.
 func (ws *WebServer) apiReadRegister(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	q := r.URL.Query()
@@ -504,15 +517,12 @@ func (ws *WebServer) apiReadRegister(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]interface{}{"error": "invalid address"})
 		return
 	}
+	dt := strings.ToLower(strings.TrimSpace(q.Get("type")))
 	count := 1
-	if c := q.Get("count"); c != "" {
-		n, e := strconv.Atoi(c)
-		if e != nil || n < 1 || n > 2 {
-			json.NewEncoder(w).Encode(map[string]interface{}{"error": "invalid count"})
-			return
-		}
-		count = n
+	if strings.Contains(dt, "32") {
+		count = 2
 	}
+	sign := strings.HasPrefix(dt, "int") // Int16 / Int32
 	data, e := modbus_rtu.ReadHoldingRegisters(uint8(slaveID), uint16(addr64), uint16(count))
 	if e != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{"error": e.Error()})
@@ -520,11 +530,22 @@ func (ws *WebServer) apiReadRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	var value int64
 	if count == 2 {
-		lo := int64(data[0])<<8 | int64(data[1])
-		hi := int64(data[2])<<8 | int64(data[3])
-		value = int64(int32(uint32(hi)<<16 | uint32(lo)))
+		// low word first — тот же порядок слов, что в WriteDoubleRegister
+		lo := binary.BigEndian.Uint16(data[0:2])
+		hi := binary.BigEndian.Uint16(data[2:4])
+		u := uint32(hi)<<16 | uint32(lo)
+		if sign {
+			value = int64(int32(u)) // Int32
+		} else {
+			value = int64(u) // Uint32
+		}
 	} else {
-		value = int64(data[0])<<8 | int64(data[1])
+		w16 := binary.BigEndian.Uint16(data[0:2])
+		if sign {
+			value = int64(int16(w16)) // Int16
+		} else {
+			value = int64(w16) // Uint16
+		}
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"ok":      true,
@@ -564,6 +585,7 @@ func (ws *WebServer) apiWriteParameter(w http.ResponseWriter, r *http.Request) {
 	}
 	address := uint16(address64)
 
+	// Значение — уже целое (raw), масштабирование по Decimal place выполняет фронтенд.
 	val, err := strconv.ParseFloat(req.Value, 64)
 	if err != nil {
 		http.Error(w, `{"error":"invalid value"}`, http.StatusBadRequest)
@@ -573,8 +595,11 @@ func (ws *WebServer) apiWriteParameter(w http.ResponseWriter, r *http.Request) {
 	is32 := strings.Contains(strings.ToLower(req.DataType), "32")
 	writeErr := error(nil)
 	if is32 {
-		writeErr = modbus_rtu.WriteDoubleRegister(uint8(req.Slave), address, uint32(int64(val)))
+		// Uint32/Int32: приводим к 32-битному беззнаковому шаблону
+		// (отрицательные Int32 — дополнительный код).
+		writeErr = modbus_rtu.WriteDoubleRegister(uint8(req.Slave), address, uint32(uint64(int64(val))))
 	} else {
+		// Uint16/Int16: младшие 16 бит шаблона значения.
 		writeErr = modbus_rtu.WriteSingleRegister(uint8(req.Slave), address, uint16(int64(val)))
 	}
 	if writeErr != nil {
@@ -582,24 +607,4 @@ func (ws *WebServer) apiWriteParameter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "slave": req.Slave, "address": req.Address})
-}
-
-// Поиск байтов 0xFF, 0xD8 (начало JPEG)
-func indexJPEGStart(data []byte) int {
-	for i := 0; i < len(data)-1; i++ {
-		if data[i] == 0xFF && data[i+1] == 0xD8 {
-			return i
-		}
-	}
-	return -1
-}
-
-// Поиск байтов 0xFF, 0xD9 (конец JPEG)
-func indexJPEGEnd(data []byte) int {
-	for i := 0; i < len(data)-1; i++ {
-		if data[i] == 0xFF && data[i+1] == 0xD9 {
-			return i
-		}
-	}
-	return -1
 }

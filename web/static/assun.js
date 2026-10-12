@@ -35,11 +35,15 @@
     return esc(s).replace(/&lt;br\s*\/?&gt;/gi, '<br>');
   }
 
-  function decimalFactor(dec) {
-    // F0..F4 -> 10^dec
+  function decPlaces(dec) {
+    // F0..F4 -> количество знаков после запятой
     var n = parseInt((dec || '').replace(/[^0-9]/g, ''), 10);
     if (isNaN(n)) n = 0;
-    return Math.pow(10, n);
+    return n;
+  }
+
+  function decimalFactor(dec) {
+    return Math.pow(10, decPlaces(dec));
   }
 
   // Number of 16-bit Modbus registers occupied by the given Data Type.
@@ -47,16 +51,22 @@
     return /32/i.test(dataType || '') ? 2 : 1;
   }
 
+  // Interpret raw register value according to Data Type column:
+  // Uint16 — unsigned 16-bit, Int16 — signed 16-bit (two's complement),
+  // Uint32 — unsigned 32-bit, Int32 — signed 32-bit (two's complement).
   function signed(raw, dataType) {
-    if (/int32/i.test(dataType)) { raw |= 0; }
-    else if (/int16/i.test(dataType)) { raw = (raw << 16) >> 16; }
-    return raw;
+    var dt = String(dataType || '').toLowerCase();
+    if (dt === 'int32') { return raw | 0; }                    // int32 two's complement
+    if (dt === 'int16') { return (raw << 16) >> 16; }          // int16 two's complement
+    if (dt === 'uint32') { return raw >>> 0; }                 // unsigned 32-bit
+    /* uint16 (и прочие 16-битные) */
+    return raw & 0xFFFF;                                       // unsigned 16-bit
   }
 
   function toText(raw, dataType, dec) {
-    var v = signed(raw & 0xFFFFFFFF, dataType);
-    var f = decimalFactor(dec);
-    if (f > 1) return v.toFixed(Math.round(Math.log10(f)));
+    var v = signed(raw, dataType);
+    var d = decPlaces(dec);
+    if (d > 0) return (v / Math.pow(10, d)).toFixed(d);
     return String(Math.round(v));
   }
 
@@ -178,7 +188,7 @@
     return found;
   }
 
-  // Parse user-entered value into raw int64 taking decimal places into account.
+  // Parse user-entered value into raw integer pattern according to Data Type.
   function parseRaw(valueStr, dataType, dec) {
     var s = String(valueStr).trim();
     var raw;
@@ -190,15 +200,20 @@
       raw = Math.round(num * decimalFactor(dec));
     }
     if (isNaN(raw)) return null;
-    if (/^u?int16$/i.test(dataType)) {
-      raw &= 0xFFFF;                       // store as unsigned 16-bit pattern
-    } else if (/^uint32$/i.test(dataType)) {
-      raw >>>= 0;                          // store as unsigned 32-bit pattern
-    } else {
-      raw |= 0;                            // int16/int32 — two's complement
-      if (raw < 0 && /^int16$/i.test(dataType)) raw += 0x10000;
-      if (raw < 0) raw += 0x100000000;
+    var dt = String(dataType || '').toLowerCase();
+    if (dt === 'uint32') {
+      return raw >= 0 ? raw : raw + 0x100000000; // беззнаковый шаблон 32 бита
     }
+    if (dt === 'int32') {
+      if (raw < -0x80000000 || raw > 0x7FFFFFFF) return null;
+      return raw;                                // сервер приведёт к дополнительному коду
+    }
+    if (dt === 'int16') {
+      if (raw < -0x8000 || raw > 0x7FFF) return null;
+      return raw;
+    }
+    /* uint16 */
+    if (raw < 0 || raw > 0xFFFF) return null;
     return raw;
   }
 
@@ -208,7 +223,7 @@
     var slave = getSlave();
     setStatus('Reading ' + p.address + ' (' + p.dataType + ') from slave ' + slave + '...');
     fetch('/api/read?address=' + encodeURIComponent(p.address) +
-          '&count=' + regCount(p.dataType) + '&slave=' + slave)
+          '&type=' + encodeURIComponent(p.dataType) + '&slave=' + slave)
       .then(function (r) { return r.json(); })
       .then(function (j) {
         if (j.error) { setStatus('Read failed ' + p.address + ': ' + j.error); return; }
@@ -252,7 +267,11 @@
     var rows = currentTabRows();
     if (!rows.length) { setStatus('Nothing to read'); return; }
     var slave = getSlave();
-    var addrs = rows.map(function (p) { return p.address.replace(/^0x/i, ''); });
+    var addrs = rows.map(function (p) {
+      // адрес + Data Type: сервер читает 1 или 2 регистра и интерпретирует
+      // значение согласно типу (Uint16/Int16/Uint32/Int32)
+      return p.address.replace(/^0x/i, '') + '@' + (p.dataType || 'Uint16');
+    });
     setStatus('Reading ' + addrs.length + ' registers of tab "' + activeTab + '" from slave ' + slave + '...');
     fetch('/api/parameters?file=' + encodeURIComponent(currentSource()) +
           '&slave=' + slave + '&regs=' + addrs.join(','))

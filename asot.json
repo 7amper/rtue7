@@ -3,8 +3,8 @@
   "tcp_server_port": 502,
   "web_server_port": 8080,
   "modbus_rtu": {
-    "port": "/dev/ttyS1",
-    "baud_rate": 9600,
+    "port": "com4",
+    "baud_rate": 230400,
     "data_bits": 8,
     "stop_bits": 1,
     "parity": "N"
@@ -20,9 +20,9 @@
     "axis_z": 3,
     "axis_a": 4,
     "gain_x": 1,
-    "gain_y": 1,
-    "gain_z": 1,
-    "gain_a": 1
+    "gain_y": 2,
+    "gain_z": 3,
+    "gain_a": 4
   },
   "modbus_registers": {
     "speed": 4098,

@@ -1,19 +1,16 @@
 package web
 
 import (
-	"bufio"
 	"crypto/subtle"
 
 	"embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io"
 
 	"io/fs"
 	"log"
 	"net/http"
-	"os/exec"
 	"rtue7/config"
 	"rtue7/modbus_rtu"
 	"rtue7/modbus_tcp"
@@ -56,7 +53,6 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/assun", ws.assunPage)
 	http.HandleFunc("/api/parameters", ws.apiParameters)
 	http.HandleFunc("/api/write", ws.authMiddleware(ws.apiWriteParameter))
-	http.HandleFunc("/video_feed", ws.authMiddleware(ws.videoFeed))
 
 	// Статические файлы
 	//http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
@@ -100,9 +96,6 @@ func (ws *WebServer) configHandler(w http.ResponseWriter, r *http.Request) {
 		newCfg.ModbusRTU.DataBits, _ = strconv.Atoi(r.FormValue("data_bits"))
 		newCfg.ModbusRTU.StopBits, _ = strconv.Atoi(r.FormValue("stop_bits"))
 		newCfg.ModbusRTU.Parity = r.FormValue("parity")
-		newCfg.Camera.RTSPURL = r.FormValue("rtsp_url")
-		newCfg.Camera.Username = r.FormValue("camera_user")
-		newCfg.Camera.Password = r.FormValue("camera_pass")
 		newCfg.Motors.AxisX, _ = strconv.Atoi(r.FormValue("axis_x"))
 		newCfg.Motors.AxisY, _ = strconv.Atoi(r.FormValue("axis_y"))
 		newCfg.Motors.AxisZ, _ = strconv.Atoi(r.FormValue("axis_z"))
@@ -510,84 +503,6 @@ func (ws *WebServer) apiWriteParameter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "slave": req.Slave, "address": req.Address})
-}
-
-// Страница видео
-func (ws *WebServer) videoPage(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/assun", http.StatusFound)
-	//ws.tmpl.ExecuteTemplate(w, "video.html", nil)
-}
-
-// MJPEG поток через ffmpeg
-func (ws *WebServer) videoFeed(w http.ResponseWriter, r *http.Request) {
-	rtspURL := ws.config.Camera.RTSPURL
-	if ws.config.Camera.Username != "" && ws.config.Camera.Password != "" {
-		// Встраиваем логин/пароль в URL (rtsp://user:pass@host/...)
-		parts := strings.SplitN(rtspURL, "://", 2)
-		if len(parts) == 2 {
-			rtspURL = parts[0] + "://" + ws.config.Camera.Username + ":" + ws.config.Camera.Password + "@" + parts[1]
-		}
-	}
-
-	cmd := exec.Command("ffmpeg",
-		"-i", rtspURL,
-		"-q:v", "5", // качество JPEG
-		"-f", "mjpeg",
-		"-")
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	stderr, _ := cmd.StderrPipe()
-	go io.Copy(io.Discard, stderr) // игнорируем лог ffmpeg
-
-	if err := cmd.Start(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer cmd.Process.Kill()
-
-	w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
-	writer := bufio.NewWriter(w)
-	boundary := "--frame\r\n"
-	contentType := "Content-Type: image/jpeg\r\n\r\n"
-
-	buf := make([]byte, 4096)
-	for {
-		// Ожидаем начало JPEG (0xFFD8)
-		start := false
-		var frame []byte
-		for {
-			n, err := stdout.Read(buf)
-			if err != nil {
-				return
-			}
-			data := buf[:n]
-			if !start {
-				// Ищем маркер начала JPEG
-				idx := indexJPEGStart(data)
-				if idx >= 0 {
-					frame = append(frame, data[idx:]...)
-					start = true
-				}
-			} else {
-				frame = append(frame, data...)
-				// Ищем конец JPEG (0xFFD9)
-				if idx := indexJPEGEnd(frame); idx >= 0 {
-					frame = frame[:idx+2] // включая маркер конца
-					break
-				}
-			}
-		}
-		// Отправляем кадр клиенту
-		writer.WriteString(boundary)
-		writer.WriteString(contentType)
-		writer.Write(frame)
-		writer.WriteString("\r\n")
-		writer.Flush()
-	}
 }
 
 // Поиск байтов 0xFF, 0xD8 (начало JPEG)

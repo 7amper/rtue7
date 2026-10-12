@@ -9,11 +9,6 @@
     "stop_bits": 1,
     "parity": "N"
   },
-  "camera": {
-    "rtsp_url": "",
-    "username": "",
-    "password": ""
-  },
   "motors": {
     "axis_x": 1,
     "axis_y": 2,

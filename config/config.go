@@ -16,12 +16,6 @@ type ModbusRTUConfig struct {
 	Parity   string `json:"parity"` // "N", "E", "O"
 }
 
-type CameraConfig struct {
-	RTSPURL  string `json:"rtsp_url"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 type MotorsConfig struct {
 	AxisX int     `json:"axis_x"`
 	AxisY int     `json:"axis_y"`
@@ -47,7 +41,6 @@ type Config struct {
 	TCPServerPort int             `json:"tcp_server_port"`
 	WebServerPort int             `json:"web_server_port"`
 	ModbusRTU     ModbusRTUConfig `json:"modbus_rtu"`
-	Camera        CameraConfig    `json:"camera"`
 	Motors        MotorsConfig    `json:"motors"`
 	Registers     RegistersConfig `json:"modbus_registers"`
 }
@@ -63,11 +56,6 @@ func defaultConfig() *Config {
 			DataBits: 8,
 			StopBits: 1,
 			Parity:   "N",
-		},
-		Camera: CameraConfig{
-			RTSPURL:  "",
-			Username: "",
-			Password: "",
 		},
 		Motors: MotorsConfig{
 			AxisX: 1,

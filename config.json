@@ -1,0 +1,35 @@
+{
+  "password": "admin",
+  "tcp_server_port": 502,
+  "web_server_port": 8080,
+  "modbus_rtu": {
+    "port": "COM3",
+    "baud_rate": 230400,
+    "data_bits": 8,
+    "stop_bits": 1,
+    "parity": "N"
+  },
+  "camera": {
+    "rtsp_url": "",
+    "username": "",
+    "password": ""
+  },
+  "motors": {
+    "axis_x": 1,
+    "axis_y": 2,
+    "axis_z": 3,
+    "axis_a": 4,
+    "gain_x": 1,
+    "gain_y": 2,
+    "gain_z": 3,
+    "gain_a": 4
+  },
+  "modbus_registers": {
+    "speed": 4098,
+    "enable": 4096,
+    "position": 4104,
+    "mode": 4106,
+    "getspeed": 4870,
+    "getposition": 4872
+  }
+}

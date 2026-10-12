@@ -1,0 +1,81 @@
+From 6322c2ac47599d9d9b162d02104bfdbe0f958821 Mon Sep 17 00:00:00 2001
+From: "qwen.ai[bot]" <qwenlm-intl@service.alibaba.com>
+Date: Thu, 1 Oct 2026 11:49:58 +0000
+Subject: [PATCH] Align all input fields to a common left edge across web pages
+
+Use a two-column CSS grid (label text | control) for forms and fieldsets
+in web/static/style.css. Every input/select now starts at the same left
+line, determined by the widest label; labels are right-aligned against it.
+Includes @supports fallback for browsers without display:contents.
+---
+ web/static/style.css | 37 ++++++++++++++++++++++++++++++++-----
+ 1 file changed, 32 insertions(+), 5 deletions(-)
+
+diff --git a/web/static/style.css b/web/static/style.css
+index 83cba0b..723173c 100644
+--- a/web/static/style.css
++++ b/web/static/style.css
+@@ -16,22 +16,49 @@ h1 {
+     font-size: 24px;
+     margin-bottom: 20px;
+ }
++
++/* ---- Form layout: all input fields start at the same left edge ---- */
++form, fieldset {
++    display: grid;
++    /* col 1 = label text (right-aligned to the longest label), col 2 = controls */
++    grid-template-columns: max-content 1fr;
++    column-gap: 8px;
++    row-gap: 6px;
++    align-items: center;
++}
+ fieldset {
++    grid-column: 1 / -1;   /* groups span the whole form width */
+     margin-bottom: 15px;
+     border: 1px solid #ddd;
+     padding: 10px;
+ }
+-label {
+-    display: block;
+-    margin: 8px 0;
++legend {
++    grid-column: 1 / -1;
+ }
++/* Fallback (browsers without display:contents support): stacked labels, uniform indent */
+ input, select {
+     padding: 6px;
+     margin-left: 8px;
++    width: 300px;
++    max-width: calc(100% - 10px);
++    box-sizing: border-box;
++}
++@supports (display: contents) {
++    label {
++        display: contents; /* let the label's text and control become grid items */
++    }
++    input, select {
++        grid-column: 2;    /* every control shares one left alignment line */
++        margin-left: 0;
++        justify-self: start;
++    }
++    form > div, fieldset > div {
++        grid-column: 1 / -1; /* button rows span both columns */
++    }
+ }
+ button {
+     padding: 8px 16px;
+-    margin: 5px;
++    margin: 5px 5px 5px 0;
+     background: #007bff;
+     color: white;
+     border: none;
+@@ -54,4 +81,4 @@ button:hover {
+     background: #ff7474;
+     border: 1px solid #ff0000;
+     border-radius: 4px;
+-}
+\ No newline at end of file
++}
+-- 
+2.39.5
+

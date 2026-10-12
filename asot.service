@@ -1,0 +1,12 @@
+# place in /etc/systemd/system/asot.service and install with `systemd install motd.service`
+[Unit]
+Description=Assun over tcp daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/asot
+
+[Install]
+WantedBy=multi-user.target
+

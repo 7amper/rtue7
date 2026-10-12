@@ -1,0 +1,132 @@
+body {
+    font-family: sans-serif;
+    background: #f0f0f0;
+    margin: 0;
+    padding: 20px;
+}
+.container {
+    max-width: 800px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+/* ---- Form layout: all input fields start at the same left edge ---- */
+form, fieldset {
+    display: grid;
+    /* col 1 = label text (right-aligned to the longest label), col 2 = controls */
+    grid-template-columns: max-content 1fr;
+    column-gap: 8px;
+    row-gap: 6px;
+    align-items: center;
+}
+fieldset {
+    grid-column: 1 / -1;   /* groups span the whole form width */
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    padding: 10px;
+}
+legend {
+    grid-column: 1 / -1;
+}
+/* Fallback (browsers without display:contents support): stacked labels, uniform indent */
+input, select {
+    padding: 6px;
+    margin-left: 8px;
+    width: 300px;
+    max-width: calc(100% - 10px);
+    box-sizing: border-box;
+}
+@supports (display: contents) {
+    label {
+        display: contents; /* let the label's text and control become grid items */
+    }
+    input, select {
+        grid-column: 2;    /* every control shares one left alignment line */
+        margin-left: 0;
+        justify-self: start;
+    }
+    form > div, fieldset > div {
+        grid-column: 1 / -1; /* button rows span both columns */
+    }
+}
+button {
+    padding: 8px 16px;
+    margin: 5px 5px 5px 0;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+button:hover {
+    background: #0056b3;
+}
+.ok, .result {
+    margin-top: 15px;
+    padding: 8px;
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+}
+.error {
+    margin-top: 15px;
+    padding: 8px;
+    background: #ff7474;
+    border: 1px solid #ff0000;
+    border-radius: 4px;
+}
+
+/* ---- ASSUN second-level tabs ---- */
+/* IMPORTANT: tab visibility is driven by class toggling in assun.js, so these
+   rules must live at the END of the stylesheet — otherwise the generic
+   `button` rule above (blue bg / white text) overrides the tab colors and the
+   later duplicate `.tab-content { display:none }` hides every panel except
+   the one whose HTML already had .active. */
+.subtabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 12px 0 0 0;
+    border-bottom: 2px solid #2c7fb8;
+}
+.subtab-btn {
+    padding: 7px 16px !important;
+    margin: 0 !important;
+    border: 1px solid #b9c6cf !important;
+    border-bottom: none !important;
+    border-radius: 6px 6px 0 0 !important;
+    background: #dbe4ea !important;
+    color: #143046 !important;          /* dark text on light tab = readable */
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.subtab-btn:hover {
+    background: #bcd7ea !important;
+    color: #0d2b45 !important;
+}
+.subtab-btn.active {
+    background: #2c7fb8 !important;     /* active tab: blue with white text */
+    color: #ffffff !important;
+    border-color: #2c7fb8 !important;
+}
+.tab-content { display: none; padding: 12px 0; }
+.tab-content.active { display: block; }
+.placeholder { color: #a00; }
+
+/* ASSUN register tables */
+.reg-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+.reg-table th, .reg-table td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; vertical-align: top; }
+.reg-table th { background: #f0f0f0; position: sticky; top: 0; }
+.reg-table td.addr { font-family: monospace; white-space: nowrap; }
+.reg-table td.notes { max-width: 480px; }
+.reg-table input { width: 110px; }
+.val-cell.readonly { color: #666; }
+.live { color: #0a7d2e; font-size: 12px; }

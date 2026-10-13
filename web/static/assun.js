@@ -271,6 +271,9 @@
   }
 
   // ---- Read All: read every register of the current Classify tab ----
+  // Значения читаются НЕ из CSV, а напрямую с контроллера по Modbus RTU
+  // (/api/readall) для выбранного Slave ID. Из CSV берутся только адреса,
+  // Data Type и Decimal place — они задают форматирование отображения.
   function readAll() {
     var rows = currentTabRows();
     if (!rows.length) { setStatus('Nothing to read'); return; }
@@ -281,8 +284,7 @@
       return p.address.replace(/^0x/i, '') + '@' + (p.dataType || 'Uint16');
     });
     setStatus('Reading ' + addrs.length + ' registers of tab "' + activeTab + '" from slave ' + slave + '...');
-    fetch('/api/parameters?file=' + encodeURIComponent(currentSource()) +
-          '&slave=' + slave + '&regs=' + addrs.join(','))
+    fetch('/api/readall?slave=' + slave + '&regs=' + addrs.join(','))
       .then(function (r) { return r.json(); })
       .then(function (j) {
         var vals = j.values || {};

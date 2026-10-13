@@ -9,14 +9,14 @@
     <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a> </p>
        <h1>Read/Write Modbus Registers</h1>
         <form method="post">
-            <label>Slave ID: <input type="number" name="slave_id" value="1"></label>
+            <label>Slave ID: <input type="number" name="slave_id" value="{{if .slave_id}}{{.slave_id}}{{else}}1{{end}}"></label>
             <label>Type: 
                 <select name="reg_type">
-                    <option value="holding">Holding Register</option>
+                    <option value="holding" {{if or (not .reg_type) (eq .reg_type "holding")}}selected{{end}}>Holding Register</option>
                 </select>
             </label>
-            <label>Address, hex (0x0000..0xFFFF): <input type="text" name="address" value="1000" pattern="[0-9a-fA-FxX]{1,6}" title="Hexadecimal address, e.g. 1000 or 0x1000"></label>
-            <label>Value: <input type="number" name="value" value={{.result}}></label>
+            <label>Address, hex (0x0000..0xFFFF): <input type="text" name="address" value="{{if .address}}{{.address}}{{else}}1000{{end}}" pattern="[0-9a-fA-FxX]{1,6}" title="Hexadecimal address, e.g. 1000 or 0x1000"></label>
+            <label>Value: <input type="number" name="value" value="{{if index . "value"}}{{index . "value"}}{{end}}"></label>
             <div>
                 <button type="submit" name="action" value="read">Read</button>
                 <button type="submit" name="action" value="write">Write</button>

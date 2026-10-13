@@ -291,6 +291,14 @@ func (ws *WebServer) registersHandler(w http.ResponseWriter, r *http.Request) {
 		address, _ := strconv.ParseUint(rawAddr, 16, 16)
 		valueStr := r.FormValue("value")
 
+		// Данные формы возвращаются в шаблон, чтобы поля не сбрасывались после чтения/записи
+		formData := map[string]interface{}{
+			"slave_id": r.FormValue("slave_id"),
+			"reg_type": regType,
+			"address":  rawAddr,
+			"value":    valueStr,
+		}
+
 		if r.FormValue("action") == "read" {
 			var result interface{}
 			var err error
@@ -307,7 +315,8 @@ func (ws *WebServer) registersHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			ws.tmpl.ExecuteTemplate(w, "registers.html", map[string]interface{}{"result": result})
+			formData["result"] = result
+			ws.tmpl.ExecuteTemplate(w, "registers.html", formData)
 			return
 		} else if r.FormValue("action") == "write" {
 			value, _ := strconv.ParseUint(valueStr, 10, 16)
@@ -323,11 +332,12 @@ func (ws *WebServer) registersHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			//http.Redirect(w, r, "/registers?ok=1", http.StatusFound)
-			ws.tmpl.ExecuteTemplate(w, "registers.html", map[string]interface{}{"ok": 1})
+			formData["ok"] = 1
+			ws.tmpl.ExecuteTemplate(w, "registers.html", formData)
 			return
 		}
 	}
-	ws.tmpl.ExecuteTemplate(w, "registers.html", nil)
+	ws.tmpl.ExecuteTemplate(w, "registers.html", map[string]interface{}{})
 }
 
 // Страница ASSUN (бывшая Video) с вкладками второго уровня

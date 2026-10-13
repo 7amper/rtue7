@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"path/filepath"
 	"rtue7/config"
 	"rtue7/modbus_rtu"
 	"rtue7/modbus_tcp"
@@ -53,6 +54,7 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/video", ws.assunPage)
 	http.HandleFunc("/assun", ws.assunPage)
 	http.HandleFunc("/api/parameters", ws.apiParameters)
+	http.HandleFunc("/api/readall", ws.apiReadAll)
 	http.HandleFunc("/api/read", ws.apiReadRegister)
 	http.HandleFunc("/api/write", ws.authMiddleware(ws.apiWriteParameter))
 
@@ -394,15 +396,116 @@ func parseAssunCSV(content string) []map[string]string {
 	return params
 }
 
+// assunFileExists проверяет имя файла по белому списку: разрешены только
+// CSV-файлы, фактически присутствующие во встраиваемом каталоге data/.
+// Прежняя проверка strings.ContainsAny(file, "/\\..") ошибочно отклоняла
+// любые имена с точкой (например, "etalon.csv") — Read All получал 400
+// «bad file name» и чтение не выполнялось.
+func assunFileExists(name string) bool {
+	if name == "" || strings.ContainsAny(name, `/\`) || filepath.Ext(name) != ".csv" {
+		return false
+	}
+	_, err := fs.Stat(dataFS, "data/"+name)
+	return err == nil
+}
+
+// readLiveRegisters читает holding-регистры устройства по Modbus RTU.
+// Каждый элемент списка — "адрес@Data Type", например "0x1004@Uint32":
+// размер (1 или 2 регистра) и интерпретация значения берутся из Data Type.
+// Возвращает карту "адрес HEX (без 0x)" -> сырое int64 значение и первую
+// ошибку соединения (чтение прерывается на ней, уже полученные значения
+// сохраняются — частичное чтение лучше полного отказа).
+func readLiveRegisters(slaveID uint8, regsStr string) (map[string]int64, error) {
+	type regReq struct {
+		addr uint16
+		size int  // количество 16-битных регистров: 1 или 2
+		sign bool // true для Int16/Int32 (дополнительный код)
+	}
+	items := strings.Split(regsStr, ",")
+	reqs := make([]regReq, 0, len(items))
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		size, sign := 1, false
+		if at := strings.IndexByte(item, '@'); at >= 0 {
+			dt := strings.ToLower(strings.TrimSpace(item[at+1:]))
+			item = item[:at]
+			if strings.Contains(dt, "32") {
+				size = 2
+			}
+			sign = strings.HasPrefix(dt, "int") // Int16 / Int32
+		}
+		a64, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(item), "0x"), 16, 16)
+		if e != nil {
+			continue
+		}
+		reqs = append(reqs, regReq{uint16(a64), size, sign})
+	}
+	if len(reqs) > 125 {
+		reqs = reqs[:125]
+	}
+	values := make(map[string]int64, len(reqs))
+	var readErr error
+	// Считываем блоки последовательных адресов с учётом размера значения.
+	for k := 0; k < len(reqs) && readErr == nil; {
+		base := reqs[k].addr
+		cnt := reqs[k].size
+		for k+cnt < len(reqs) && cnt < 125 {
+			if reqs[k+cnt].addr != base+uint16(cnt) {
+				break
+			}
+			cnt += reqs[k+cnt].size
+		}
+		data, e := modbus_rtu.ReadHoldingRegisters(slaveID, base, uint16(cnt))
+		if e != nil {
+			readErr = e
+			break
+		}
+		words := make([]uint16, cnt)
+		for j := 0; j < cnt; j++ {
+			words[j] = binary.BigEndian.Uint16(data[j*2 : j*2+2])
+		}
+		// Интерпретация прочитанных слов согласно Data Type:
+		// Uint16 — беззнаковое 16-бит; Int16 — знаковое 16-бит;
+		// Uint32/Int32 — два слова (low word first, как в WriteDoubleRegister),
+		// Int32 — знаковое (дополнительный код), Uint32 — беззнаковое.
+		for j := 0; j < cnt; j += reqs[k+j].size {
+			key := fmt.Sprintf("%04X", base+uint16(j))
+			var v int64
+			if reqs[k+j].size == 2 {
+				u := uint32(words[j+1])<<16 | uint32(words[j])
+				if reqs[k+j].sign {
+					v = int64(int32(u)) // Int32
+				} else {
+					v = int64(u) // Uint32
+				}
+			} else if reqs[k+j].sign {
+				v = int64(int16(words[j])) // Int16
+			} else {
+				v = int64(words[j]) // Uint16
+			}
+			values[key] = v
+		}
+		k += cnt
+	}
+	return values, readErr
+}
+
 // API для страницы ASSUN: ?file=etalon.csv — полный список параметров,
 // ?file=...&slave=N&regs=1000,100A,... — чтение значений из контроллера.
 func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	file := r.URL.Query().Get("file")
+	q := r.URL.Query()
+	file := q.Get("file")
 	if file == "" {
 		file = "assun.csv"
 	}
-	if strings.ContainsAny(file, "/\\..") {
+	// Разрешены только известные CSV-файлы из встраиваемого каталога data/.
+	// Проверка по белому списку (а не по подстроке ".."), чтобы корректно
+	// работать с именами вида "etalon.csv".
+	if !assunFileExists(file) {
 		http.Error(w, `{"error":"bad file name"}`, http.StatusBadRequest)
 		return
 	}
@@ -418,93 +521,50 @@ func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
 		"slave_id": 0,
 	}
 
-	// Опционально: чтение/запись holding-регистров устройства (Modbus RTU)
-	q := r.URL.Query()
+	// Опционально: чтение holding-регистров устройства (Modbus RTU)
 	if regsStr := q.Get("regs"); regsStr != "" {
 		slaveID, e := strconv.ParseUint(q.Get("slave"), 10, 8)
 		if e != nil || slaveID == 0 {
 			out["error"] = "invalid slave id"
 		} else {
-			// Каждый элемент списка — "адрес@Data Type", например "0x1004@Uint32".
-			// Размер и интерпретация значения берутся из колонки Data Type.
-			type regReq struct {
-				addr uint16
-				size int    // количество 16-битных регистров: 1 или 2
-				sign bool   // true для Int16/Int32 (дополнительный код)
-			}
-			items := strings.Split(regsStr, ",")
-			reqs := make([]regReq, 0, len(items))
-			for _, item := range items {
-				item = strings.TrimSpace(item)
-				if item == "" {
-					continue
-				}
-				size, sign := 1, false
-				if at := strings.IndexByte(item, '@'); at >= 0 {
-					dt := strings.ToLower(strings.TrimSpace(item[at+1:]))
-					item = item[:at]
-					if strings.Contains(dt, "32") {
-						size = 2
-					}
-					sign = strings.HasPrefix(dt, "int") // Int16 / Int32
-				}
-				a64, e := strconv.ParseUint(strings.TrimPrefix(strings.ToLower(item), "0x"), 16, 16)
-				if e != nil {
-					continue
-				}
-				reqs = append(reqs, regReq{uint16(a64), size, sign})
-			}
-			if len(reqs) > 125 {
-				reqs = reqs[:125]
-			}
-			// Считываем блоки последовательных адресов с учётом размера значения.
-			values := make(map[string]int64, len(reqs))
-			for k := 0; k < len(reqs); {
-				base := reqs[k].addr
-				cnt := reqs[k].size
-				for k+cnt < len(reqs) && cnt < 125 {
-					if reqs[k+cnt].addr != base+uint16(cnt) {
-						break
-					}
-					cnt += reqs[k+cnt].size
-				}
-				data, e := modbus_rtu.ReadHoldingRegisters(uint8(slaveID), base, uint16(cnt))
-				if e != nil {
-					out["error"] = e.Error()
-					break
-				}
-				words := make([]uint16, cnt)
-				for j := 0; j < cnt; j++ {
-					words[j] = binary.BigEndian.Uint16(data[j*2 : j*2+2])
-				}
-				// Интерпретация прочитанных слов согласно Data Type:
-				// Uint16 — беззнаковое 16-бит; Int16 — знаковое 16-бит;
-				// Uint32/Int32 — два слова (low word first, как в WriteDoubleRegister),
-				// Int32 — знаковое (дополнительный код), Uint32 — беззнаковое.
-				for j := 0; j < cnt; j += reqs[k+j].size {
-					key := fmt.Sprintf("%04X", base+uint16(j))
-					var v int64
-					if reqs[k+j].size == 2 {
-						u := uint32(words[j+1])<<16 | uint32(words[j])
-						if reqs[k+j].sign {
-							v = int64(int32(u)) // Int32
-						} else {
-							v = int64(u) // Uint32
-						}
-					} else if reqs[k+j].sign {
-						v = int64(int16(words[j])) // Int16
-					} else {
-						v = int64(words[j]) // Uint16
-					}
-					values[key] = v
-				}
-				k += cnt
-			}
+			values, readErr := readLiveRegisters(uint8(slaveID), regsStr)
 			out["live"] = true
 			out["slave_id"] = slaveID
+			// Прочитанные значения отправляем клиенту (ключ — адрес HEX без 0x),
+			// чтобы кнопка Read All вписывала их в колонку Value.
+			out["values"] = values
+			if readErr != nil {
+				out["error"] = readErr.Error()
+			}
 		}
 	}
 
+	b, _ := json.Marshal(out)
+	w.Write(b)
+}
+
+// GET /api/readall?slave=N&regs=1000@Uint16,1001@Int16,... — массовое
+// чтение holding-регистров напрямую с устройства по Modbus RTU (кнопка
+// Read All на вкладке ASSUN). В отличие от /api/parameters здесь нет CSV:
+// сервер возвращает только живые значения контроллера для выбранного Slave ID.
+func (ws *WebServer) apiReadAll(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	q := r.URL.Query()
+	out := map[string]interface{}{"live": false, "slave_id": 0, "values": map[string]int64{}}
+	slaveID, e := strconv.ParseUint(q.Get("slave"), 10, 8)
+	if e != nil || slaveID == 0 {
+		out["error"] = "invalid slave id"
+	} else if regsStr := q.Get("regs"); regsStr == "" {
+		out["error"] = "no registers requested"
+	} else {
+		values, readErr := readLiveRegisters(uint8(slaveID), regsStr)
+		out["live"] = true
+		out["slave_id"] = slaveID
+		out["values"] = values
+		if readErr != nil {
+			out["error"] = readErr.Error()
+		}
+	}
 	b, _ := json.Marshal(out)
 	w.Write(b)
 }

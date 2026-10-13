@@ -16,8 +16,8 @@
                     <option value="a" {{if eq .SelAxis "a"}}selected{{end}}>Axis A (slave {{.Motors.AxisA}})</option>
                 </select>
             </label>
-            <label>Speed (0-1000): <input type="number" name="setspeed" value={{.speedH}} step="0.1" placeholder="0.0"></label>
-            <label>Step: <input type="number" name="setpos" value={{.stepH}} step="0.1" placeholder="0.0"></label>
+            <label>Speed (0-1000): <input type="number" name="setspeed" value={{.speedH}} step="any" placeholder="0.0"></label>
+            <label>Step: <input type="number" name="setpos" value={{.stepH}} step="any" placeholder="0.0"></label>
             <div>
                 <button type="submit" name="direction" value="backward">Backward continuous</button>
                 <button type="submit" name="direction" value="backwardstep">Backward step </button>

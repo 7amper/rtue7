@@ -38,10 +38,10 @@
 
             <fieldset>
                 <legend>Gear ratios (web only) </legend>
-                <label>Drive X: <input type="number" name="gain_x" value="{{.Motors.GainX}}" step="0.1" placeholder="0.0"></label>
-                <label>Drive Y: <input type="number" name="gain_y" value="{{.Motors.GainY}}" step="0.1" placeholder="0.0"></label>
-                <label>Drive Z: <input type="number" name="gain_z" value="{{.Motors.GainZ}}" step="0.1" placeholder="0.0"></label>
-                <label>Drive A: <input type="number" name="gain_a" value="{{.Motors.GainA}}" step="0.1" placeholder="0.0"></label>
+                <label>Drive X: <input type="number" name="gain_x" value="{{.Motors.GainX}}" step="any" min="0" placeholder="0.0"></label>
+                <label>Drive Y: <input type="number" name="gain_y" value="{{.Motors.GainY}}" step="any" min="0" placeholder="0.0"></label>
+                <label>Drive Z: <input type="number" name="gain_z" value="{{.Motors.GainZ}}" step="any" min="0" placeholder="0.0"></label>
+                <label>Drive A: <input type="number" name="gain_a" value="{{.Motors.GainA}}" step="any" min="0" placeholder="0.0"></label>
             </fieldset>
 
             <fieldset>

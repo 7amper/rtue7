@@ -502,6 +502,9 @@ func (ws *WebServer) apiParameters(w http.ResponseWriter, r *http.Request) {
 			}
 			out["live"] = true
 			out["slave_id"] = slaveID
+			// Прочитанные значения отправляем клиенту (ключ — адрес HEX без 0x),
+			// чтобы кнопка Read All вписывала их в колонку Value.
+			out["values"] = values
 		}
 	}
 

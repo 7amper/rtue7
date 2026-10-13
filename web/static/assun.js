@@ -77,11 +77,19 @@
     return esc(toText(liveValues[key], p.dataType, p.decimal)) + ' <span class="live">(live)</span>';
   }
 
+  // Value shown in an editable input after a Read All: live controller value
+  // (formatted per Data Type / Decimal place) or the CSV default.
+  function inputValue(p) {
+    var key = hexKey(p.address);
+    if (!(key in liveValues)) return esc(p.value);
+    return esc(toText(liveValues[key], p.dataType, p.decimal));
+  }
+
   function rowHtml(p) {
     var editable = !(p.classify === '12' || p.classify === '13');
     var cell = editable
       ? '<td class="val-cell"><input data-addr="' + esc(p.address) + '" data-type="' + esc(p.dataType) + '"' +
-        ' value="' + esc(p.value) + '" title="Press Enter or click Write to save to the controller"></td>'
+        ' value="' + inputValue(p) + '" title="Press Enter or click Write to save to the controller"></td>'
       : '<td class="val-cell readonly">' + displayValue(p) + '</td>';
     return '<tr>' +
       '<td class="addr">' + esc(p.address) + '</td>' +
@@ -277,13 +285,32 @@
           '&slave=' + slave + '&regs=' + addrs.join(','))
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        if (j.error) { setStatus('Read error: ' + j.error); render(); return; }
         var vals = j.values || {};
+        var n = Object.keys(vals).length;
+        // Сохраняем введённые пользователем значения полей, если их строка
+        // не была прочитана (например, обрыв групповой операции чтения).
+        var typedVals = collectTypedValues();
         Object.keys(vals).forEach(function (k) { liveValues[k.toUpperCase()] = vals[k]; });
         render();
-        setStatus('Read All OK (' + Object.keys(vals).length + ' values)');
+        Object.keys(typedVals).forEach(function (k) {
+          if (!(k in vals)) {
+            var inp = findValInput(k);
+            if (inp) inp.value = typedVals[k];
+          }
+        });
+        if (j.error && !n) { setStatus('Read error: ' + j.error); return; }
+        setStatus('Read All OK (' + n + ' values)' + (j.error ? ' — partial: ' + j.error : ''));
       })
       .catch(function (err) { setStatus('Read error: ' + err); });
+  }
+
+  // Snapshot of current editable input values keyed by HEX address.
+  function collectTypedValues() {
+    var out = {};
+    document.querySelectorAll('input[data-addr]').forEach(function (el) {
+      out[hexKey(el.dataset.addr)] = el.value;
+    });
+    return out;
   }
 
   // ---- Write All: write every editable cell of the current Classify tab ----
@@ -302,6 +329,9 @@
       if (i >= rows.length) {
         btn.disabled = false;
         setStatus('Write All done: ' + (done - failed) + ' ok, ' + failed + ' failed');
+        // После успешной записи перечитываем регистры вкладки, чтобы колонка
+        // Value показала фактическое содержимое контроллера.
+        readAll();
         return;
       }
       var p = rows[i];

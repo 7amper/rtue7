@@ -1,0 +1,98 @@
+{
+  "slave": 1,
+  "tab": "gain",
+  "source": "assun.csv",
+  "savedAt": "2026-10-28T06:39:40.158Z",
+  "registers": [
+    {
+      "address": "0x119C",
+      "value": 200,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x119D",
+      "value": 120,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x119E",
+      "value": 250,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x119F",
+      "value": 0,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11A0",
+      "value": 220,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11A1",
+      "value": 0,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11A2",
+      "value": 2,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11A3",
+      "value": 0,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11A4",
+      "value": 0,
+      "dataType": "Int16"
+    },
+    {
+      "address": "0x11A5",
+      "value": 0,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11A6",
+      "value": 0,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11A7",
+      "value": 65535,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11A8",
+      "value": 0,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11A9",
+      "value": 0,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11AA",
+      "value": 0,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11AB",
+      "value": 0,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11AC",
+      "value": 0,
+      "dataType": "Uint16"
+    },
+    {
+      "address": "0x11AD",
+      "value": 0,
+      "dataType": "Uint16"
+    }
+  ]
+}

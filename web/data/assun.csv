@@ -1,4 +1,5 @@
 Classify@Address@Name@Value@Unit@DataType@Notes@Display mode@Decimal place
+1@0x1297@Reserved Parameter@0@H(0000----FFFF)@Uint16@AA60 Keep Parameter<br>Other value not effective@H@F0
 1@0x1000@Starting Type@10@(0----10)@Uint16@Startin Type<br>1. Stop (Self define CAN, RS485, close enable)<br>3. Open the CANOPEN Mode Control (If need to active CAN402 function, must write 3, only for CAN402, switch anabling are decided by "Controlling Words (0x6040_00)")<br>10: Operation (Self define CAN, RS485, open enable)@D@F0
 1@0x1001@Motor Current Set Value@1@0.1A(-32768----32767)@Int16@(Unit 0.1A)@D@F0
 1@0x1002@Motor Speed Set Value@3100@rpm or 0.1rpm(-2147483648----2147483647)@Int32@Unit (rpm or 0.1 rpm, unit decided by 108C bit4)@D@F0
@@ -202,7 +203,6 @@ Classify@Address@Name@Value@Unit@DataType@Notes@Display mode@Decimal place
 12@0x1294@Motor Stop Temperature@170@degC(0----65535)@Uint16@degC@D@F0
 12@0x1295@Drive Frequency@16@kHZ(0----22)@Uint16@kHZ@D@F0
 12@0x1296@Current Set-value@445@0.1A(0----65535)@Uint16@Unit (0.1A)@D@F0
-12@0x1297@Reserved Parameter@0@H(0000----FFFF)@Uint16@AA60 Keep Parameter<br>Other value not effective@H@F0
 12@0x1298@Bus Voltage Low Protection Value@10@V(0----65535)@Uint16@V@D@F1
 12@0x1299@Bus Voltage Over Protection Value@75@V(0----65535)@Uint16@V@D@F2
 12@0x129A@Start Filtering@0@(0----1)@Int16@Turn on FIR Filtering<br>0: Closed<br>1: Start@D@F0

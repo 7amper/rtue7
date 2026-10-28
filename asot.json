@@ -14,10 +14,10 @@
     "axis_y": 2,
     "axis_z": 3,
     "axis_a": 4,
-    "gain_x": 1.237,
-    "gain_y": 0.755,
-    "gain_z": 1,
-    "gain_a": 1
+    "gain_x": 1,
+    "gain_y": 2,
+    "gain_z": 3,
+    "gain_a": 4
   },
   "modbus_registers": {
     "speed": 4098,

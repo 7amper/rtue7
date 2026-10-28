@@ -10,7 +10,11 @@
        <h1>Read/Write Modbus Registers</h1>
         <form method="post">
             <label>Slave ID: <input type="number" name="slave_id" value="{{if .slave_id}}{{.slave_id}}{{else}}1{{end}}"></label>
+<<<<<<< HEAD
             <label>Type:
+=======
+            <label>Type: 
+>>>>>>> 221b71dbd8ea69a64026e1d7e83a46aeefd32063
                 <select name="reg_type">
                     <option value="holding" {{if or (not .reg_type) (eq .reg_type "holding")}}selected{{end}}>Holding Register</option>
                 </select>

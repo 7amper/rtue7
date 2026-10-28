@@ -31,6 +31,7 @@ func main() {
 }
 
 func InitRtuTCP(cfg *config.Config) {
+
 	// Инициализация Modbus RTU клиента
 	if err := modbus_rtu.Start(cfg.ModbusRTU); err != nil {
 		log.Println(err.Error())
@@ -41,8 +42,8 @@ func InitRtuTCP(cfg *config.Config) {
 	// Запуск TCP Modbus сервера
 	if err := modbus_tcp.Start(cfg.TCPServerPort); err != nil {
 		log.Println(err.Error())
+	} else {
+		log.Printf("TCP Modbus server port: %v", cfg.TCPServerPort)
 	}
-	// else {
-	// 	log.Printf("TCP Modbus server port: %v", cfg.TCPServerPort)
-	// }
+
 }

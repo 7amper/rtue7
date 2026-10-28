@@ -1,0 +1,138 @@
+From 5a92e97ab994a61f6540d5131870069ce3652c24 Mon Sep 17 00:00:00 2001
+From: "qwen.ai[bot]" <qwenlm-intl@service.alibaba.com>
+Date: Wed, 28 Oct 2026 06:48:56 +0000
+Subject: [PATCH 2/2] Simplify ASSUN toolbar: default preset file name
+ id<slave><tab>, remove Data source select and Reload button
+
+- Save dialog now suggests file name in format id1basic (id + Slave ID + section/tab name); Load suggests the first existing preset file or the same default
+- Removed 'Data source' dropdown (assun.csv/etalon.csv) and Reload button from assun.html; assun.js always uses embedded assun data
+- Dropped etalon.csv remote loading logic and related handlers
+---
+ web/static/assun.js      | 41 +++++++++-------------------------------
+ web/templates/assun.html |  7 -------
+ 2 files changed, 9 insertions(+), 39 deletions(-)
+
+diff --git a/web/static/assun.js b/web/static/assun.js
+index 999ae2f..0e734ce 100644
+--- a/web/static/assun.js
++++ b/web/static/assun.js
+@@ -21,7 +21,6 @@
+   ];
+ 
+   var params = [];        // rows from embedded JSON (assun.csv)
+-  var remote = null;      // rows fetched from /api/parameters?file=etalon.csv
+   var liveValues = {};    // addr(HEX, no prefix) -> raw int64 from controller
+   var activeTab = 'basic';
+ 
+@@ -118,13 +117,11 @@
+   }
+ 
+   function currentSource() {
+-    var sel = document.getElementById('fileSel');
+-    return sel ? sel.value : 'assun.csv';
++    return 'assun.csv';
+   }
+ 
+   function currentData() {
+-    var src = currentSource();
+-    return (src === 'assun.csv') ? params : remote;
++    return params;
+   }
+ 
+   function tabClasses(name) {
+@@ -155,9 +152,8 @@
+   window.showTab = showTab;
+ 
+   function render() {
+-    var src = currentSource();
+-    var data = (src === 'assun.csv') ? params : remote;
+-    if (!data) { setStatus('Loading etalon.csv...'); return; }
++    var data = currentData();
++    if (!data) return;
+     TABS.forEach(function (t) {
+       var el = document.getElementById('tab-' + t.name);
+       if (!el) return;
+@@ -436,8 +432,8 @@
+       regs.push({ address: p.address, value: raw, dataType: p.dataType });
+     }
+     if (!regs.length) { setStatus('Nothing to save'); return; }
+-    var def = presetFiles[0] ? presetFiles[0].replace(/\.json$/i, '')
+-                             : (activeTab + '_preset');
++    // Имя по умолчанию: id<SlaveID><section>, например id1basic
++    var def = 'id' + getSlave() + activeTab;
+     var name = askFileName('save', def);
+     if (name === null) { setStatus('Save cancelled'); return; }
+     setStatus('Saving ' + regs.length + ' registers to "' + name + '.json"...');
+@@ -463,7 +459,9 @@
+ 
+   // ---- Load: значения из файла -> таблица ----
+   function loadFromFile() {
+-    var name = askFileName('load', presetFiles[0] ? presetFiles[0].replace(/\.json$/i, '') : '');
++    var def = presetFiles[0] ? presetFiles[0].replace(/\.json$/i, '')
++                             : ('id' + getSlave() + activeTab);
++    var name = askFileName('load', def);
+     if (name === null) { setStatus('Load cancelled'); return; }
+     setStatus('Loading "' + name + '.json"...');
+     fetch('/api/regfile/load', {
+@@ -494,18 +492,6 @@
+       .catch(function (err) { setStatus('Load error: ' + err); });
+   }
+ 
+-  function loadRemoteIfNeeded() {
+-    if (remote) { render(); return; }
+-    fetch('/api/parameters?file=etalon.csv')
+-      .then(function (r) { return r.json(); })
+-      .then(function (j) {
+-        remote = j.params || [];
+-        render();
+-        setStatus('Etalon loaded (' + remote.length + ' rows)');
+-      })
+-      .catch(function () { remote = []; render(); setStatus('Etalon file not found'); });
+-  }
+-
+   // ---- init ----
+   try {
+     params = JSON.parse(document.getElementById('assunData').textContent);
+@@ -513,18 +499,9 @@
+ 
+   document.getElementById('btnReadAll').addEventListener('click', readAll);
+   document.getElementById('btnWriteAll').addEventListener('click', writeAll);
+-  document.getElementById('btnReload').addEventListener('click', function () {
+-    liveValues = {};
+-    if (currentSource() === 'etalon.csv') loadRemoteIfNeeded(); else render();
+-    setStatus('Table reloaded from CSV');
+-  });
+   document.getElementById('btnSaveFile').addEventListener('click', function () { saveToFile(false); });
+   document.getElementById('btnLoadFile').addEventListener('click', loadFromFile);
+   refreshPresetList();
+-  document.getElementById('fileSel').addEventListener('change', function () {
+-    liveValues = {};
+-    if (currentSource() === 'etalon.csv') loadRemoteIfNeeded(); else render();
+-  });
+ 
+   render();
+ })();
+diff --git a/web/templates/assun.html b/web/templates/assun.html
+index 861e5ea..dfb71f7 100644
+--- a/web/templates/assun.html
++++ b/web/templates/assun.html
+@@ -9,16 +9,9 @@
+     <h1>ASSUN Register Map</h1>
+ 
+     <div class="toolbar" style="margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+-        <label>Data source:
+-            <select id="fileSel">
+-                <option value="assun.csv" selected>ASSUN (assun.csv)</option>
+-                <option value="etalon.csv">Etalon (etalon.csv)</option>
+-            </select>
+-        </label>
+         <label>Slave ID: <input id="slaveId" type="number" min="1" max="247" value="1" style="width:60px"></label>
+         <button id="btnReadAll" title="Read all registers of the current tab from the controller via Modbus RTU">Read All</button>
+         <button id="btnWriteAll" title="Write all cells of the selected Classify (current tab) to the controller via Modbus RTU">Write All</button>
+-        <button id="btnReload" title="Reload table from CSV file">Reload</button>
+         <button id="btnSaveFile" title="Save register values of the current tab to a file on the server (Windows: next to the executable, Linux: /etc/asot)">Save</button>
+         <button id="btnLoadFile" title="Load register values from a file on the server into the table of the current tab">Load</button>
+         <span id="statusMsg" style="color:#555;"></span>
+-- 
+2.39.5
+

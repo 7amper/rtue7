@@ -21,7 +21,6 @@
   ];
 
   var params = [];        // rows from embedded JSON (assun.csv)
-  var remote = null;      // rows fetched from /api/parameters?file=etalon.csv
   var liveValues = {};    // addr(HEX, no prefix) -> raw int64 from controller
   var activeTab = 'basic';
 
@@ -118,13 +117,11 @@
   }
 
   function currentSource() {
-    var sel = document.getElementById('fileSel');
-    return sel ? sel.value : 'assun.csv';
+    return 'assun.csv';
   }
 
   function currentData() {
-    var src = currentSource();
-    return (src === 'assun.csv') ? params : remote;
+    return params;
   }
 
   function tabClasses(name) {
@@ -155,9 +152,8 @@
   window.showTab = showTab;
 
   function render() {
-    var src = currentSource();
-    var data = (src === 'assun.csv') ? params : remote;
-    if (!data) { setStatus('Loading etalon.csv...'); return; }
+    var data = currentData();
+    if (!data) return;
     TABS.forEach(function (t) {
       var el = document.getElementById('tab-' + t.name);
       if (!el) return;
@@ -436,8 +432,8 @@
       regs.push({ address: p.address, value: raw, dataType: p.dataType });
     }
     if (!regs.length) { setStatus('Nothing to save'); return; }
-    var def = presetFiles[0] ? presetFiles[0].replace(/\.json$/i, '')
-                             : (activeTab + '_preset');
+    // Имя по умолчанию: id<SlaveID><section>, например id1basic
+    var def = 'id' + getSlave() + activeTab;
     var name = askFileName('save', def);
     if (name === null) { setStatus('Save cancelled'); return; }
     setStatus('Saving ' + regs.length + ' registers to "' + name + '.json"...');
@@ -463,7 +459,9 @@
 
   // ---- Load: значения из файла -> таблица ----
   function loadFromFile() {
-    var name = askFileName('load', presetFiles[0] ? presetFiles[0].replace(/\.json$/i, '') : '');
+    var def = presetFiles[0] ? presetFiles[0].replace(/\.json$/i, '')
+                             : ('id' + getSlave() + activeTab);
+    var name = askFileName('load', def);
     if (name === null) { setStatus('Load cancelled'); return; }
     setStatus('Loading "' + name + '.json"...');
     fetch('/api/regfile/load', {
@@ -494,18 +492,6 @@
       .catch(function (err) { setStatus('Load error: ' + err); });
   }
 
-  function loadRemoteIfNeeded() {
-    if (remote) { render(); return; }
-    fetch('/api/parameters?file=etalon.csv')
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        remote = j.params || [];
-        render();
-        setStatus('Etalon loaded (' + remote.length + ' rows)');
-      })
-      .catch(function () { remote = []; render(); setStatus('Etalon file not found'); });
-  }
-
   // ---- init ----
   try {
     params = JSON.parse(document.getElementById('assunData').textContent);
@@ -513,18 +499,9 @@
 
   document.getElementById('btnReadAll').addEventListener('click', readAll);
   document.getElementById('btnWriteAll').addEventListener('click', writeAll);
-  document.getElementById('btnReload').addEventListener('click', function () {
-    liveValues = {};
-    if (currentSource() === 'etalon.csv') loadRemoteIfNeeded(); else render();
-    setStatus('Table reloaded from CSV');
-  });
   document.getElementById('btnSaveFile').addEventListener('click', function () { saveToFile(false); });
   document.getElementById('btnLoadFile').addEventListener('click', loadFromFile);
   refreshPresetList();
-  document.getElementById('fileSel').addEventListener('change', function () {
-    liveValues = {};
-    if (currentSource() === 'etalon.csv') loadRemoteIfNeeded(); else render();
-  });
 
   render();
 })();

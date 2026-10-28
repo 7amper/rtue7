@@ -12,10 +12,12 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"rtue7/config"
 	"rtue7/modbus_rtu"
 	"rtue7/modbus_tcp"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -57,6 +59,9 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/readall", ws.apiReadAll)
 	http.HandleFunc("/api/read", ws.apiReadRegister)
 	http.HandleFunc("/api/write", ws.authMiddleware(ws.apiWriteParameter))
+	http.HandleFunc("/api/regfile/save", ws.authMiddleware(ws.apiRegFileSave))
+	http.HandleFunc("/api/regfile/load", ws.authMiddleware(ws.apiRegFileLoad))
+	http.HandleFunc("/api/regfile/list", ws.authMiddleware(ws.apiRegFileList))
 
 	// Статические файлы
 	//http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
@@ -677,4 +682,168 @@ func (ws *WebServer) apiWriteParameter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "slave": req.Slave, "address": req.Address})
+}
+
+// ============================================================================
+// Load/Save значений регистров в файл (кнопки Load и Save на странице ASSUN).
+//
+// Каталог файлов зависит от ОС (как в main.go для asot.json):
+//   - Windows: рядом с исполняемым файлом (каталог запуска);
+//   - Linux:   /etc/asot (запись требует прав root — как у systemd-сервиса
+//     asot.service; при отказе записи клиенту возвращается ошибка доступа).
+// Имя файла пользователь вводит в диалоге на странице; сервер проверяет его
+// (без путей и «..», расширение .json добавляется автоматически).
+// ============================================================================
+
+const regFileDirLinux = "/etc/asot"
+
+// regFilesDir возвращает каталог для файлов пресетов регистров.
+func regFilesDir() string {
+	if runtime.GOOS == "windows" {
+		if exe, err := os.Executable(); err == nil {
+			return filepath.Dir(exe)
+		}
+		return "."
+	}
+	return regFileDirLinux
+}
+
+// regFilePath разрешает имя файла в каталоге пресетов; пустое имя или имя
+// с путевыми разделителями — ошибка (защита от path traversal).
+func regFilePath(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || strings.ContainsAny(name, `/"\`) || name == "." || name == ".." {
+		return "", fmt.Errorf("bad file name")
+	}
+	if !strings.EqualFold(filepath.Ext(name), ".json") {
+		name += ".json"
+	}
+	return filepath.Join(regFilesDir(), name), nil
+}
+
+// regFileEntry — один сохранённый регистр: адрес HEX, сырое (масштабированное
+// по Decimal place) значение и Data Type для корректной интерпретации.
+type regFileEntry struct {
+	Address  string `json:"address"`
+	Value    int64  `json:"value"`
+	DataType string `json:"dataType,omitempty"`
+}
+
+// regFileData — содержимое файла пресета.
+type regFileData struct {
+	Slave     int            `json:"slave,omitempty"`
+	Tab       string         `json:"tab,omitempty"`
+	Source    string         `json:"source,omitempty"`
+	SavedAt   string         `json:"savedAt,omitempty"`
+	Registers []regFileEntry `json:"registers"`
+}
+
+// GET /api/regfile/list — имена доступных файлов пресетов (подсказки на странице).
+func (ws *WebServer) apiRegFileList(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	names := []string{}
+	out := map[string]interface{}{"dir": regFilesDir(), "files": names}
+	entries, err := os.ReadDir(regFilesDir())
+	if err == nil {
+		for _, e := range entries {
+			if e.IsDir() || !strings.EqualFold(filepath.Ext(e.Name()), ".json") {
+				continue
+			}
+			names = append(names, e.Name())
+		}
+	}
+	out["files"] = names
+	b, _ := json.Marshal(out)
+	w.Write(b)
+}
+
+// POST /api/regfile/save — сохранить значения регистров в файл.
+// Тело запроса (JSON): {"name":"preset1","slave":1,"tab":"basic",
+//
+// "source":"assun.csv","registers":[{"address":"0x1000","value":10,"dataType":"Uint16"}]}
+func (ws *WebServer) apiRegFileSave(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Name      string         `json:"name"`
+		Slave     int            `json:"slave"`
+		Tab       string         `json:"tab"`
+		Source    string         `json:"source"`
+		SavedAt   string         `json:"savedAt"`
+		Registers []regFileEntry `json:"registers"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"bad json"}`, http.StatusBadRequest)
+		return
+	}
+	path, err := regFilePath(req.Name)
+	if err != nil {
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+	if len(req.Registers) == 0 {
+		http.Error(w, `{"error":"no registers to save"}`, http.StatusBadRequest)
+		return
+	}
+	data := regFileData{Slave: req.Slave, Tab: req.Tab, Source: req.Source,
+		SavedAt: req.SavedAt, Registers: req.Registers}
+	b, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		http.Error(w, `{"error":"marshal failed"}`, http.StatusInternalServerError)
+		return
+	}
+	if runtime.GOOS != "windows" {
+		if mkErr := os.MkdirAll(filepath.Dir(path), 0o755); mkErr != nil {
+			log.Printf("regfile mkdir %s: %v", filepath.Dir(path), mkErr) // попробуем записать и так
+		}
+	}
+	if err := os.WriteFile(path, b, 0o644); err != nil {
+		http.Error(w, `{"error":"write failed: `+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true, "path": path, "count": len(req.Registers)})
+}
+
+// POST /api/regfile/load — прочитать файл пресета и вернуть регистры.
+// Тело запроса (JSON): {"name":"preset1"}
+func (ws *WebServer) apiRegFileLoad(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"bad json"}`, http.StatusBadRequest)
+		return
+	}
+	path, err := regFilePath(req.Name)
+	if err != nil {
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+		return
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		http.Error(w, `{"error":"read failed: `+err.Error()+`"}`, http.StatusNotFound)
+		return
+	}
+	var data regFileData
+	if err := json.Unmarshal(content, &data); err != nil {
+		http.Error(w, `{"error":"bad file format"}`, http.StatusBadRequest)
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"ok":        true,
+		"path":      path,
+		"slave":     data.Slave,
+		"tab":       data.Tab,
+		"source":    data.Source,
+		"savedAt":   data.SavedAt,
+		"registers": data.Registers,
+	})
 }

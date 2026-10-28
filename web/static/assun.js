@@ -380,6 +380,120 @@
     });
   }
 
+  // ---- Load / Save: сохранение и загрузка значений регистров в файл ----
+  // Файл хранится на сервере: Windows — рядом с исполняемым файлом,
+  // Linux — в каталоге /etc/asot (см. regFilesDir в web/server.go).
+  // Имя файла спрашиваем у пользователя через prompt при каждом действии.
+  var presetFiles = [];   // имена существующих файлов (из /api/regfile/list)
+
+  // Текущее состояние таблицы: live-значение контроллера, иначе raw из
+  // введённого/дефолтного текста ячейки (масштабированное по Decimal place).
+  function currentRaw(p) {
+    var key = hexKey(p.address);
+    if (key in liveValues) return liveValues[key];
+    var inp = findValInput(p.address);
+    var s = inp ? inp.value : p.value;
+    return parseRaw(s, p.dataType, p.decimal);
+  }
+
+  // Список известных файлов пресетов для автодополнения имени.
+  function refreshPresetList(cb) {
+    fetch('/api/regfile/list')
+      .then(function (r) { return r.json(); })
+      .then(function (j) { presetFiles = j.files || []; if (cb) cb(); })
+      .catch(function () { presetFiles = []; if (cb) cb(); });
+  }
+
+  // Диалог выбора имени файла: подсказка со списком существующих файлов,
+  // пустой ввод или отмена — null.
+  function askFileName(action, defName) {
+    var hint = presetFiles.length
+      ? ' Existing files: ' + presetFiles.join(', ')
+      : '';
+    var name = window.prompt(
+      'Enter file name to ' + action + ' (' + regFilesDirHint() + ')' + hint +
+      '\n(.json is added automatically):',
+      defName || '');
+    if (name === null) return null;
+    name = name.trim();
+    if (/\.json$/i.test(name)) name = name.replace(/\.json$/i, '');
+    return name === '' ? null : name;
+  }
+
+  // Подсказка пользователю о расположении файла (совпадает с логикой Go).
+  function regFilesDirHint() {
+    return 'server file: Windows - next to the executable, Linux - /etc/asot';
+  }
+
+  // ---- Save: значения текущего вида (вкладки) в файл ----
+  function saveToFile(scopeAll) {
+    var rows = scopeAll ? (currentData() || []) : currentTabRows();
+    var regs = [];
+    for (var i = 0; i < rows.length; i++) {
+      var p = rows[i];
+      var raw = currentRaw(p);
+      if (raw === null) continue; // нечитаемое значение — пропускаем
+      regs.push({ address: p.address, value: raw, dataType: p.dataType });
+    }
+    if (!regs.length) { setStatus('Nothing to save'); return; }
+    var def = presetFiles[0] ? presetFiles[0].replace(/\.json$/i, '')
+                             : (activeTab + '_preset');
+    var name = askFileName('save', def);
+    if (name === null) { setStatus('Save cancelled'); return; }
+    setStatus('Saving ' + regs.length + ' registers to "' + name + '.json"...');
+    fetch('/api/regfile/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: name,
+        slave: getSlave(),
+        tab: scopeAll ? '*' : activeTab,
+        source: currentSource(),
+        savedAt: new Date().toISOString(),
+        registers: regs
+      })
+    }).then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.error) { setStatus('Save failed: ' + j.error); return; }
+        setStatus('Saved ' + j.count + ' registers to ' + j.path);
+        refreshPresetList();
+      })
+      .catch(function (err) { setStatus('Save error: ' + err); });
+  }
+
+  // ---- Load: значения из файла -> таблица ----
+  function loadFromFile() {
+    var name = askFileName('load', presetFiles[0] ? presetFiles[0].replace(/\.json$/i, '') : '');
+    if (name === null) { setStatus('Load cancelled'); return; }
+    setStatus('Loading "' + name + '.json"...');
+    fetch('/api/regfile/load', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name })
+    }).then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.error) { setStatus('Load failed: ' + j.error); return; }
+        var regs = j.registers || [];
+        var data = currentData() || [];
+        var byAddr = {};
+        data.forEach(function (p) { byAddr[hexKey(p.address)] = p; });
+        var applied = 0, missing = 0;
+        regs.forEach(function (e) {
+          var p = byAddr[hexKey(e.address)];
+          if (!p) { missing++; return; }
+          var raw = parseInt(e.value, 10);
+          if (isNaN(raw)) { missing++; return; }
+          liveValues[hexKey(p.address)] = raw; // показываем как загруженное значение
+          applied++;
+        });
+        render(); // обновляет поля ввода из liveValues
+        var msg = 'Loaded ' + applied + ' values from ' + j.path;
+        if (missing) msg += ' (' + missing + ' skipped: no such row in this table)';
+        setStatus(msg);
+      })
+      .catch(function (err) { setStatus('Load error: ' + err); });
+  }
+
   function loadRemoteIfNeeded() {
     if (remote) { render(); return; }
     fetch('/api/parameters?file=etalon.csv')
@@ -404,6 +518,9 @@
     if (currentSource() === 'etalon.csv') loadRemoteIfNeeded(); else render();
     setStatus('Table reloaded from CSV');
   });
+  document.getElementById('btnSaveFile').addEventListener('click', function () { saveToFile(false); });
+  document.getElementById('btnLoadFile').addEventListener('click', loadFromFile);
+  refreshPresetList();
   document.getElementById('fileSel').addEventListener('change', function () {
     liveValues = {};
     if (currentSource() === 'etalon.csv') loadRemoteIfNeeded(); else render();

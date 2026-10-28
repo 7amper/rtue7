@@ -459,8 +459,8 @@
 
   // ---- Load: значения из файла -> таблица ----
   function loadFromFile() {
-    var def = presetFiles[0] ? presetFiles[0].replace(/\.json$/i, '')
-                             : ('id' + getSlave() + activeTab);
+    // Имя по умолчанию: id<SlaveID><section>, например id1basic
+    var def = 'id' + getSlave() + activeTab;
     var name = askFileName('load', def);
     if (name === null) { setStatus('Load cancelled'); return; }
     setStatus('Loading "' + name + '.json"...');

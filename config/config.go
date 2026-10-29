@@ -78,13 +78,16 @@ func defaultConfig() *Config {
 	}
 }
 
-// Load загружает конфигурацию из файла, если файла нет – создаёт с настройками по умолчанию.
+// Load загружает конфигурацию из файла.
+// Если файла нет или он пустой/повреждён (некорректный JSON) – создаёт файл
+// с настройками по умолчанию и продолжает работу.
 func Load(path string) (*Config, error) {
 	cfgFile = path
 	data, err := os.ReadFile(path)
 	log.Printf("Загрузка %s <<<", path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			log.Printf("Файл %s не найден – создаём с настройками по умолчанию", path)
 			cfg := defaultConfig()
 			if err := save(cfg, path); err != nil {
 				return nil, err
@@ -95,7 +98,12 @@ func Load(path string) (*Config, error) {
 	}
 	var cfg Config
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, err
+		log.Printf("Файл %s повреждён или пуст (%v) – пересоздаём с настройками по умолчанию", path, err)
+		fresh := defaultConfig()
+		if err := save(fresh, path); err != nil {
+			return nil, err
+		}
+		return fresh, nil
 	}
 	return &cfg, nil
 }

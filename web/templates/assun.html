@@ -5,7 +5,9 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a> | <a href="/config">Configuration</a></p>
+    <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a>
+       <button type="button" onclick="stopAllMotors()" title="Stop all 4 drives (write Stop to the Start Type register of every axis)">Stop All</button>
+       <span id="stopMsg" style="color:#555;"></span></p>
     <h1>ASSUN Register Map</h1>
 
     <div class="toolbar" style="margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">

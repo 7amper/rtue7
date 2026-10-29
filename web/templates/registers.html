@@ -5,29 +5,47 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <!--<div class="container">-->
-    <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a> </p>
+    <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a>
+       <button type="button" onclick="stopAllMotors()" title="Stop all 4 drives (write Stop to the Start Type register of every axis)">Stop All</button>
+       <span id="stopMsg" style="color:#555;"></span></p>
        <h1>Read/Write Modbus Registers</h1>
         <form method="post">
             <label>Slave ID: <input type="number" name="slave_id" value="{{if .slave_id}}{{.slave_id}}{{else}}1{{end}}"></label>
-<<<<<<< HEAD
-            <label>Type:
-=======
-            <label>Type: 
->>>>>>> 221b71dbd8ea69a64026e1d7e83a46aeefd32063
-                <select name="reg_type">
-                    <option value="holding" {{if or (not .reg_type) (eq .reg_type "holding")}}selected{{end}}>Holding Register</option>
+            <label>Data Type:
+                <select name="data_type">
+                    <option value="Uint16" {{if eq .data_type "Uint16"}}selected{{end}}>Uint16</option>
+                    <option value="Int16" {{if eq .data_type "Int16"}}selected{{end}}>Int16</option>
+                    <option value="Uint32" {{if eq .data_type "Uint32"}}selected{{end}}>Uint32</option>
+                    <option value="Int32" {{if or (not .data_type) (eq .data_type "Int32")}}selected{{end}}>Int32</option>
+                    <option value="Q10" {{if eq .data_type "Q10"}}selected{{end}}>Q10</option>
+                    <option value="Q13" {{if eq .data_type "Q13"}}selected{{end}}>Q13</option>
+                    <option value="Q15" {{if eq .data_type "Q15"}}selected{{end}}>Q15</option>
                 </select>
             </label>
             <label>Address, hex (0x0000..0xFFFF): <input type="text" name="address" value="{{if .address}}{{.address}}{{else}}1000{{end}}" pattern="[0-9a-fA-FxX]{1,6}" title="Hexadecimal address, e.g. 1000 or 0x1000"></label>
-            <label>Value: <input type="number" name="value" value="{{if index . "value"}}{{index . "value"}}{{end}}"></label>
+            <label>Value: <input type="text" name="value" value="{{if index . "value"}}{{index . "value"}}{{end}}"></label>
             <div>
                 <button type="submit" name="action" value="read">Read</button>
                 <button type="submit" name="action" value="write">Write</button>
             </div>
         </form>
-        {{if .result}}<div class="result">Read result: {{.result}}</div>{{end}}
+        {{if .hasresult}}<div class="result">Read result: {{.result}}</div>{{end}}
         {{if .ok}}<div class="ok">Write completed</div>{{end}}
-    <!--</div>-->
+    <script>
+    function stopAllMotors() {
+        var msg = document.getElementById('stopMsg');
+        msg.textContent = 'Stopping all drives...';
+        fetch('/api/stopall', { method: 'POST' })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (j.error) { msg.textContent = 'Stop All error: ' + j.error; return; }
+                var parts = (j.results || []).map(function (x) {
+                    return 'axis ' + x.axis + ' (slave ' + x.slave + '): ' + (x.ok ? 'stopped' : 'FAILED (' + x.error + ')');
+                });
+                msg.textContent = 'Stop All: ' + (parts.length ? parts.join('; ') : 'no axes configured');
+            })
+            .catch(function (e) { msg.textContent = 'Stop All request failed: ' + e; });
+    }
+    </script>
 </body>
 </html>

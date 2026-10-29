@@ -5,7 +5,9 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-        <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a> </p>
+    <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a>
+       <button type="button" onclick="stopAllMotors()" title="Stop all 4 drives (write Stop to the Start Type register of every axis)">Stop All</button>
+       <span id="stopMsg" style="color:#555;"></span></p>
         <h1>Edit Configuration</h1>
         <form method="post">
             <fieldset>
@@ -56,5 +58,21 @@
             <button type="submit">Save</button>
             {{if .ok}}<div class="ok">Configuration saved (restart required to apply)</div>{{end}}
         </form>
+    <script>
+    function stopAllMotors() {
+        var msg = document.getElementById('stopMsg');
+        msg.textContent = 'Stopping all drives...';
+        fetch('/api/stopall', { method: 'POST' })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (j.error) { msg.textContent = 'Stop All error: ' + j.error; return; }
+                var parts = (j.results || []).map(function (x) {
+                    return 'axis ' + x.axis + ' (slave ' + x.slave + '): ' + (x.ok ? 'stopped' : 'FAILED (' + x.error + ')');
+                });
+                msg.textContent = 'Stop All: ' + (parts.length ? parts.join('; ') : 'no axes configured');
+            })
+            .catch(function (e) { msg.textContent = 'Stop All request failed: ' + e; });
+    }
+    </script>
 </body>
 </html>

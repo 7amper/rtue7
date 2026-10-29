@@ -503,5 +503,29 @@
   document.getElementById('btnLoadFile').addEventListener('click', loadFromFile);
   refreshPresetList();
 
+  // Stop All (кнопка в шапке страницы) — останавливает все 4 привода.
+  window.stopAllMotors = function () {
+    var msg = document.getElementById('stopMsg');
+    if (msg) msg.textContent = 'Stopping all drives...';
+    fetch('/api/stopall', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var text;
+        if (j.error) {
+          text = 'Stop All error: ' + j.error;
+        } else {
+          var parts = (j.results || []).map(function (x) {
+            return 'axis ' + x.axis + ' (slave ' + x.slave + '): ' + (x.ok ? 'stopped' : 'FAILED (' + x.error + ')');
+          });
+          text = 'Stop All: ' + (parts.length ? parts.join('; ') : 'no axes configured');
+        }
+        if (msg) msg.textContent = text; else setStatus(text);
+      })
+      .catch(function (e) {
+        var text = 'Stop All request failed: ' + e;
+        if (msg) msg.textContent = text; else setStatus(text);
+      });
+  };
+
   render();
 })();

@@ -5,11 +5,13 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-        <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a> </p>
+    <p><a href="/motor">Motor Control</a> | <a href="/registers">Registers</a> | <a href="/assun">ASSUN</a>| <a href="/config">Configuration</a>
+       <button type="button" onclick="stopAllMotors()" title="Stop all 4 drives (write Stop to the Start Type register of every axis)">Stop All</button>
+       <span id="stopMsg" style="color:#555;"></span></p>
         <h1>Motor Control (Modbus RTU)</h1>
         <form action="/motor" method="post">
             <label>Axis:
-                <select name="axis" onchange="this.form.submit()"> 
+                <select name="axis" onchange="this.form.submit()">
                     <option value="x" {{if eq .SelAxis "x"}}selected{{end}}>Axis X (slave {{.Motors.AxisX}})</option>
                     <option value="y" {{if eq .SelAxis "y"}}selected{{end}}>Axis Y (slave {{.Motors.AxisY}})</option>
                     <option value="z" {{if eq .SelAxis "z"}}selected{{end}}>Axis Z (slave {{.Motors.AxisZ}})</option>
@@ -28,5 +30,21 @@
         </form>
         {{if .error}}<div class="error">Error: {{.message}}</div>{{end}}
         {{if .ok}}<div class="ok">{{.message}}</div>{{end}}
+    <script>
+    function stopAllMotors() {
+        var msg = document.getElementById('stopMsg');
+        msg.textContent = 'Stopping all drives...';
+        fetch('/api/stopall', { method: 'POST' })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (j.error) { msg.textContent = 'Stop All error: ' + j.error; return; }
+                var parts = (j.results || []).map(function (x) {
+                    return 'axis ' + x.axis + ' (slave ' + x.slave + '): ' + (x.ok ? 'stopped' : 'FAILED (' + x.error + ')');
+                });
+                msg.textContent = 'Stop All: ' + (parts.length ? parts.join('; ') : 'no axes configured');
+            })
+            .catch(function (e) { msg.textContent = 'Stop All request failed: ' + e; });
+    }
+    </script>
 </body>
 </html>

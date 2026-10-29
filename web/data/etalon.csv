@@ -174,6 +174,22 @@ Classify@Address@Name@Value@Unit@DataType@Notes@Display mode@Decimal place
 9@0x122D@Malfunction Shiled@FFFF@H(0000----FFFF)@Uint16@Bitx:0is sheild;<br>1:Activate@H@F0
 9@0x122E@Malfunction Lock@0@H(0000----FFFF)@Uint16@Bitx:0is auto recovery;<br>1:Locked@H@F0
 9@0x122F@DI Input Filter Response Time@20@ms(0----32767)@Uint16@ms@D@F0
+9@0x1230@Input0@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x1231@Input1@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x1232@Input2@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x1233@Input3@0111@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x1234@Input4@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x1235@Input5@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x1236@Input6@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x1237@Input7@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x1238@Output0@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x1239@Output1@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x123A@Output2@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x123B@Output3@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x123C@Output4@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x123D@Output5@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x123E@Output6@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
+9@0x123F@Output7@0000@H(0000----FFFF)@Uint16@Bit0~Bit7: Function code,Bit8: Logic code@H@F0
 9@0x1248@Motor Vout0 Test Choice@0@(0----65535)@Uint16@*Vout 0 Testing Selection<br>0: Speed<br>1: Speed Set<br>2: Q Shaft Current<br>3. Q Shaft Current Given Value<br>4. D Shaft Current<br>5. Electric Angle<br>6. Position Error Pulse<br>7. Acceleration@D@F0
 9@0x1249@Vout0 Output Percentage@0@(-31.5----31.5)@Q10@@D@F4
 9@0x124A@Motor Vout1 Test Choice@0@(0----65535)@Uint16@*Vout 1 Testing Selection<br>0: Speed<br>1: Speed Set<br>2: Q Shaft Current<br>3. Q Shaft Current Given Value<br>4. D Shaft Current<br>5. Electric Angle<br>6. Position Error Pulse<br>7. Acceleration@D@F0

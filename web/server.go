@@ -62,6 +62,7 @@ func (ws *WebServer) Start() error {
 	http.HandleFunc("/api/regfile/save", ws.authMiddleware(ws.apiRegFileSave))
 	http.HandleFunc("/api/regfile/load", ws.authMiddleware(ws.apiRegFileLoad))
 	http.HandleFunc("/api/regfile/list", ws.authMiddleware(ws.apiRegFileList))
+	http.HandleFunc("/api/stopall", ws.stopAllHandler)
 
 	// Статические файлы
 	//http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
@@ -285,66 +286,163 @@ func (ws *WebServer) motorHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// dataTypeInfo возвращает количество 16-битных регистров и признак знакового
+// типа по колонке Data Type (как на вкладке ASSUN):
+// Uint16/Int16/Qx — 1 регистр, Uint32/Int32 — 2 регистра; Int* — знаковые.
+func dataTypeInfo(dt string) (count int, signed bool) {
+	l := strings.ToLower(strings.TrimSpace(dt))
+	count = 1
+	if strings.Contains(l, "32") {
+		count = 2
+	}
+	if strings.HasPrefix(l, "int") {
+		signed = true
+	}
+	return count, signed
+}
+
+// formatRegValue форматирует прочитанное сырое значение согласно выбранному
+// типу данных (знаковые типы — дополнительный код).
+func formatRegValue(raw int64, dt string) string {
+	_, signed := dataTypeInfo(dt)
+	l := strings.ToLower(strings.TrimSpace(dt))
+	switch {
+	case strings.Contains(l, "32"):
+		u := uint32(raw & 0xFFFFFFFF)
+		if signed {
+			return strconv.FormatInt(int64(int32(u)), 10)
+		}
+		return strconv.FormatUint(uint64(u), 10)
+	default:
+		u := uint16(raw & 0xFFFF)
+		if signed {
+			return strconv.FormatInt(int64(int16(u)), 10)
+		}
+		return strconv.FormatUint(uint64(u), 10)
+	}
+}
+
 // Страница чтения/записи регистров
 func (ws *WebServer) registersHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		r.ParseForm()
 		sl, _ := strconv.ParseUint(r.FormValue("slave_id"), 10, 8)
 		slaveID := uint8(sl)
-		regType := r.FormValue("reg_type")
+		dataType := r.FormValue("data_type")
+		if dataType == "" {
+			dataType = "Uint16"
+		}
 		// Address is entered in hexadecimal (e.g. 0x1234 or 1234)
 		rawAddr := strings.TrimSpace(r.FormValue("address"))
 		rawAddr = strings.TrimPrefix(strings.ToLower(rawAddr), "0x")
-		address, _ := strconv.ParseUint(rawAddr, 16, 16)
-		valueStr := r.FormValue("value")
+		address, addrErr := strconv.ParseUint(rawAddr, 16, 16)
+		valueStr := strings.TrimSpace(r.FormValue("value"))
 
 		// Данные формы возвращаются в шаблон, чтобы поля не сбрасывались после чтения/записи
 		formData := map[string]interface{}{
-			"slave_id": r.FormValue("slave_id"),
-			"reg_type": regType,
-			"address":  rawAddr,
-			"value":    valueStr,
+			"slave_id":  r.FormValue("slave_id"),
+			"data_type": dataType,
+			"address":   rawAddr,
+			"value":     valueStr,
 		}
 
+		count, _ := dataTypeInfo(dataType)
+
 		if r.FormValue("action") == "read" {
-			var result interface{}
-			var err error
-			switch regType {
-			case "holding":
-				res, err := modbus_rtu.ReadHoldingRegisters(slaveID, uint16(address), 1)
-				if err == nil && len(res) > 0 {
-					result = int(res[0])*256 + int(res[1])
-				}
-			default:
-				err = fmt.Errorf("unsupported register type for read")
+			if addrErr != nil {
+				http.Error(w, "invalid address", http.StatusInternalServerError)
+				return
 			}
+			res, err := modbus_rtu.ReadHoldingRegisters(slaveID, uint16(address), uint16(count))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			formData["result"] = result
+			var raw int64
+			if count == 2 && len(res) >= 4 {
+				// low word first — тот же порядок слов, что в WriteDoubleRegister
+				lo := binary.BigEndian.Uint16(res[0:2])
+				hi := binary.BigEndian.Uint16(res[2:4])
+				raw = int64(uint32(hi)<<16 | uint32(lo))
+			} else if len(res) >= 2 {
+				raw = int64(binary.BigEndian.Uint16(res[0:2]))
+			} else {
+				http.Error(w, "no data received", http.StatusInternalServerError)
+				return
+			}
+			formData["result"] = formatRegValue(raw, dataType)
+			formData["hasresult"] = true
 			ws.tmpl.ExecuteTemplate(w, "registers.html", formData)
 			return
 		} else if r.FormValue("action") == "write" {
-			value, _ := strconv.ParseUint(valueStr, 10, 16)
-			var err error
-			switch regType {
-			case "holding":
-				err = modbus_rtu.WriteSingleRegister(slaveID, uint16(address), uint16(value))
-			default:
-				err = fmt.Errorf("unsupported register type for write")
-			}
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			if addrErr != nil {
+				http.Error(w, "invalid address", http.StatusInternalServerError)
 				return
 			}
-			//http.Redirect(w, r, "/registers?ok=1", http.StatusFound)
+			val, verr := strconv.ParseFloat(valueStr, 64)
+			if verr != nil {
+				http.Error(w, "invalid value: "+valueStr, http.StatusInternalServerError)
+				return
+			}
+			var werr error
+			if count == 2 {
+				// Uint32/Int32: приводим к 32-битному беззнаковому шаблону
+				// (отрицательные Int32 — дополнительный код).
+				werr = modbus_rtu.WriteDoubleRegister(slaveID, uint16(address), uint32(uint64(int64(val))))
+			} else {
+				// Uint16/Int16: младшие 16 бит шаблона значения.
+				werr = modbus_rtu.WriteSingleRegister(slaveID, uint16(address), uint16(int64(val)))
+			}
+			if werr != nil {
+				http.Error(w, werr.Error(), http.StatusInternalServerError)
+				return
+			}
 			formData["ok"] = 1
 			ws.tmpl.ExecuteTemplate(w, "registers.html", formData)
 			return
 		}
 	}
 	ws.tmpl.ExecuteTemplate(w, "registers.html", map[string]interface{}{})
+}
+
+// POST /api/stopall — кнопка «Stop All» на страницах: останавливает все 4
+// привода так же, как кнопка Stop в Motor Control (запись значения Стоп
+// (1) в регистр Enable/Starting Type каждого оси из конфигурации).
+func (ws *WebServer) stopAllHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	axes := []struct {
+		Name  string
+		Slave int
+	}{
+		{"x", ws.config.Motors.AxisX},
+		{"y", ws.config.Motors.AxisY},
+		{"z", ws.config.Motors.AxisZ},
+		{"a", ws.config.Motors.AxisA},
+	}
+	type axisResult struct {
+		Axis  string `json:"axis"`
+		Slave int    `json:"slave"`
+		OK    bool   `json:"ok"`
+		Error string `json:"error,omitempty"`
+	}
+	results := make([]axisResult, 0, len(axes))
+	for _, ax := range axes {
+		res := axisResult{Axis: ax.Name, Slave: ax.Slave}
+		if ax.Slave <= 0 || ax.Slave > 247 {
+			res.Error = "invalid slave id"
+		} else if err := modbus_rtu.WriteSingleRegister(uint8(ax.Slave), ws.config.Registers.Enable, 1); err != nil {
+			res.Error = err.Error()
+		} else {
+			res.OK = true
+		}
+		results = append(results, res)
+	}
+	b, _ := json.Marshal(map[string]interface{}{"results": results})
+	w.Write(b)
 }
 
 // Страница ASSUN (бывшая Video) с вкладками второго уровня

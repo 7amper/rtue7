@@ -1,6 +1,6 @@
 module rtue7
 
-go 1.26.5
+go 1.19
 
 require github.com/goburrow/modbus v0.1.0
 

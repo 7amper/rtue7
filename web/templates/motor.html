@@ -11,7 +11,7 @@
         <h1>Motor Control (Modbus RTU)</h1>
         <form action="/motor" method="post">
             <label>Axis:
-                <select name="axis" onchange="this.form.submit()">
+                <select name="axis" onchange="this.form.submit()"> 
                     <option value="x" {{if eq .SelAxis "x"}}selected{{end}}>Axis X (slave {{.Motors.AxisX}})</option>
                     <option value="y" {{if eq .SelAxis "y"}}selected{{end}}>Axis Y (slave {{.Motors.AxisY}})</option>
                     <option value="z" {{if eq .SelAxis "z"}}selected{{end}}>Axis Z (slave {{.Motors.AxisZ}})</option>

@@ -69,19 +69,71 @@
     return String(Math.round(v));
   }
 
+  // Rows whose Unit column looks like "H(....)" are displayed and accepted
+  // in HEX (display mode H in the ASSUN table).
+  function isHexUnit(p) {
+    return /^H\s*\(/i.test(String(p.unit || '').trim());
+  }
+
+  // Format a raw register pattern as a HEX string for display/input.
+  function toHexText(raw, dataType) {
+    var w = /32/i.test(dataType || '') ? 8 : 4;
+    var v = signed(raw, dataType);
+    if (v < 0) v += (w === 8 ? 0x100000000 : 0x10000);
+    var s = v.toString(16).toUpperCase();
+    while (s.length < w) s = '0' + s;
+    return s;
+  }
+
+  // Text shown in Value cell: HEX for H(...)-units, decimal otherwise.
+  function fmtValue(p, raw) {
+    if (isHexUnit(p)) return toHexText(raw, p.dataType);
+    return toText(raw, p.dataType, p.decimal);
+  }
+
+  // Accept either HEX ("0xAB", "AB12") or decimal input; returns raw int.
+  function parseAnyInt(s) {
+    s = String(s).trim();
+    if (s === '') return null;
+    var m = /^(?:0x)?([0-9a-f]+)$/i.exec(s);
+    if (!m) return null;
+    var hexDigitsOnly = /^(?:0x)?[0-9a-f]+$/i.test(s) && /[a-f]/i.test(s.replace(/^0x/i, ''));
+    var val;
+    if (/^0x/i.test(s) || hexDigitsOnly) {
+      val = parseInt(m[1], 16);
+    } else {
+      // pure digits: try decimal first; fall back to HEX on range error
+      val = parseInt(s.replace(/^0x/i, ''), 10);
+    }
+    if (isNaN(val)) return null;
+    return val;
+  }
+
   // Displayed value for read-only cells: live controller value or CSV default.
+  function defaultRaw(p) {
+    // CSV default value: HEX string for H(...)-rows (e.g. "000F", "A0302005"),
+    // decimal otherwise.
+    if (isHexUnit(p)) {
+      var v = parseAnyInt(p.value);
+      return v === null ? 0 : v;
+    }
+    var n = parseFloat(p.value);
+    if (isNaN(n)) return 0;
+    return Math.round(n * decimalFactor(p.decimal));
+  }
+
   function displayValue(p) {
     var key = hexKey(p.address);
-    if (!(key in liveValues)) return esc(p.value);
-    return esc(toText(liveValues[key], p.dataType, p.decimal)) + ' <span class="live">(live)</span>';
+    if (!(key in liveValues)) return esc(fmtValue(p, defaultRaw(p)));
+    return esc(fmtValue(p, liveValues[key])) + ' <span class="live">(live)</span>';
   }
 
   // Value shown in an editable input after a Read All: live controller value
   // (formatted per Data Type / Decimal place) or the CSV default.
   function inputValue(p) {
     var key = hexKey(p.address);
-    if (!(key in liveValues)) return esc(p.value);
-    return esc(toText(liveValues[key], p.dataType, p.decimal));
+    if (key in liveValues) return esc(fmtValue(p, liveValues[key]));
+    return esc(fmtValue(p, defaultRaw(p)));
   }
 
   function rowHtml(p) {
@@ -178,7 +230,7 @@
   function applyLiveValue(p, raw) {
     liveValues[hexKey(p.address)] = raw;
     var valCell = findValInput(p.address);
-    if (valCell) valCell.value = toText(raw, p.dataType, p.decimal);
+    if (valCell) valCell.value = fmtValue(p, raw);
     else render(); // read-only cells are not inputs — re-render text
   }
 
@@ -193,11 +245,14 @@
   }
 
   // Parse user-entered value into raw integer pattern according to Data Type.
-  function parseRaw(valueStr, dataType, dec) {
+  // For rows with Unit "H(...)" the input is interpreted as HEX; otherwise as
+  // decimal scaled by Decimal place (a "0x..." prefix always forces HEX).
+  function parseRaw(valueStr, dataType, dec, hexMode) {
     var s = String(valueStr).trim();
     var raw;
-    if (/^0x/i.test(s)) {
-      raw = parseInt(s, 16);
+    if (/^0x/i.test(s) || hexMode) {
+      raw = parseAnyInt(s);
+      if (raw === null) return null;
     } else {
       var num = parseFloat(s);
       if (isNaN(num)) return null;
@@ -232,7 +287,7 @@
       .then(function (j) {
         if (j.error) { setStatus('Read failed ' + p.address + ': ' + j.error); return; }
         applyLiveValue(p, j.value);
-        setStatus('Read OK: ' + p.address + ' = ' + toText(j.value, p.dataType, p.decimal));
+        setStatus('Read OK: ' + p.address + ' = ' + fmtValue(p, j.value));
       })
       .catch(function (err) { setStatus('Read error: ' + err); });
   }
@@ -249,7 +304,7 @@
   }
 
   function writeOne(p, valueStr, cb) {
-    var raw = parseRaw(valueStr, p.dataType, p.decimal);
+    var raw = parseRaw(valueStr, p.dataType, p.decimal, isHexUnit(p));
     if (raw === null) { cb(false, 'invalid value "' + valueStr + '"'); return; }
     var body = {
       slave: getSlave(),
@@ -389,7 +444,7 @@
     if (key in liveValues) return liveValues[key];
     var inp = findValInput(p.address);
     var s = inp ? inp.value : p.value;
-    return parseRaw(s, p.dataType, p.decimal);
+    return parseRaw(s, p.dataType, p.decimal, isHexUnit(p));
   }
 
   // Список известных файлов пресетов для автодополнения имени.

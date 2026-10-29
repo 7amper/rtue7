@@ -82,7 +82,7 @@
     if (v < 0) v += (w === 8 ? 0x100000000 : 0x10000);
     var s = v.toString(16).toUpperCase();
     while (s.length < w) s = '0' + s;
-    return s;
+    return '0x' + s;
   }
 
   // Text shown in Value cell: HEX for H(...)-units, decimal otherwise.
